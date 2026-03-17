@@ -1,38 +1,56 @@
-# Horizon IT - Local VM Installation Copy
+# Horizon IT - Local VM Edition
 
-Standalone IT Project Management tool optimized for local virtual machine deployment (up to 20 users).
+A fully standalone, high-performance IT Project Management tool designed for secure, air-gapped, or local VM deployments. 
 
-## 🚀 Independent Deployment
-This version is fully decoupled from Supabase. It uses a local PostgreSQL instance running via Docker.
+> [!IMPORTANT]
+> This version is **100% Supabase-free**. All data, authentication, and file storage are managed locally on your infrastructure.
 
-## 🛠️ Installation Guide
+## 🚀 Quick Start (Docker)
 
-### Prerequisites
-- Docker and Docker Compose installed on the VM.
-- Access to the terminal.
+### 1. Prerequisites
+- **Docker** and **Docker Compose** installed.
+- Minimum **2GB RAM** (4GB recommended).
 
-### Step 1: Clone or Copy
-Copy this entire directory to your VM.
+### 2. Setup Configuration
+Clone the repository and create your environment file:
+```bash
+cp .env.example .env
+```
+Edit `.env` and set secure values for `POSTGRES_PASSWORD` and `JWT_SECRET`.
 
-### Step 2: Configure Environment
-The `.env` file is pre-configured for Docker. You generally don't need to change anything unless you want to update the database password.
-
-### Step 3: Launch
-Run the following command in the root directory:
+### 3. Launch
 ```bash
 docker-compose up -d --build
 ```
+The application will automatically:
+- Start a local PostgreSQL 17 instance.
+- Build the Next.js application.
+- Run database migrations via Prisma.
+- Initialize local file storage volumes.
 
-### Step 4: Initialize Database
-Wait about 10 seconds for the database to start, then run:
-```bash
-docker-compose exec app npx prisma db push
-```
+### 4. Access
+- **Web UI**: `http://<your-vm-ip>:3000`
+- **Default Login**: Use the `create-admin` script (see below) or seed the database.
 
-## 📋 Features
-- **Local PostgreSQL**: Data stays on your VM.
-- **Resource Efficient**: Optimized for 2-4GB RAM VMs.
-- **20 Users Capacity**: Pre-configured connection pooling for 20 concurrent users.
+---
 
-## 📖 Detailed Guide
-See [VM_INSTALL_GUIDE.md](./VM_INSTALL_GUIDE.md) for advanced configuration and performance tuning.
+## 🛠️ Management Commands
+
+| Action | Command |
+| :--- | :--- |
+| **Create Admin** | `docker-compose exec app npm run create-admin` |
+| **Seed Demo Data** | `docker-compose exec app npm run seed` |
+| **View Logs** | `docker-compose logs -f app` |
+| **Stop App** | `docker-compose down` |
+
+---
+
+## 📦 Architecture
+- **Framework**: Next.js 15 (App Router)
+- **Database**: PostgreSQL (Local)
+- **Auth**: Local JWT (HttpOnly Cookies) + bcryptjs
+- **Storage**: Local Disk (with Docker Volume persistence)
+- **Real-time**: Intelligent Polling (No external sockets required)
+
+## 📖 Deployment Guide
+For advanced configuration, performance tuning, and SSL setup, refer to the [VM_INSTALL_GUIDE.md](./VM_INSTALL_GUIDE.md).
