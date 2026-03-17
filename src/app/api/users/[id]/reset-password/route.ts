@@ -2,10 +2,9 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
-
 import bcrypt from 'bcryptjs';
 
-export const POST = withAuth(async (req: NextRequest, user: any) => {
+export const POST = withAuth(async (req: NextRequest, user: any, { params }: { params: Promise<{ id: string }> }) => {
   const dbUser = await prisma.user.findUnique({
     where: { email: user.email },
     select: { role: true }
@@ -15,7 +14,7 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
   }
 
   try {
-    const id = req.nextUrl.pathname.split('/').slice(-2, -1)[0];
+    const { id } = await params;
     const userId = parseInt(id);
 
     if (isNaN(userId)) {

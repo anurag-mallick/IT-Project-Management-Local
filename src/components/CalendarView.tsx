@@ -70,7 +70,7 @@ const CalendarView = ({ users, assets }: CalendarViewProps) => {
     // Big calendar requires start and end Date objects
     return {
       id: ticket.id,
-      title: `${ticket.title} ${ticket.timeSpent ? `(${ticket.timeSpent}h)` : ''}`,
+      title: ticket.title,
       start,
       end,
       resource: ticket,

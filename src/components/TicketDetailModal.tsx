@@ -57,6 +57,22 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
   const [mentionIndex, setMentionIndex] = useState(-1); // To track which @ we are replacing
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
+  const fetchActivityLogs = useCallback(async () => {
+    if (!ticket) return;
+    try {
+      const res = await fetch(`/api/tickets/${ticket.id}/activity`);
+      if (res.ok) setActivityLogs(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  }, [ticket]);
+
+  const getUserName = (id: string | null) => {
+    if (!id) return 'Unassigned';
+    const found = staff.find(u => String(u.id) === id);
+    return found ? (found.name || found.username) : `User #${id}`;
+  };
+
   const fetchComments = useCallback(async () => {
     if (!ticket) return;
     try {
@@ -101,7 +117,7 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
       if (!initialAssets) fetchAssets();
       else setAssets(initialAssets);
     }
-  }, [isOpen, ticket, fetchComments, fetchStaff, fetchAssets, users, initialAssets]);
+  }, [isOpen, ticket, fetchComments, fetchActivityLogs, fetchStaff, fetchAssets, users, initialAssets]);
 
   const saveTicket = async () => {
     if (!ticket) return;
@@ -442,7 +458,7 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
                     case 'ASSIGNMENT_CHANGE':
                       Icon = UserIcon;
                       colorClass = 'text-blue-400 bg-blue-500/20';
-                      message = `changed assignment from ${log.oldValue ? `User ${log.oldValue}` : 'Unassigned'} to ${log.newValue ? `User ${log.newValue}` : 'Unassigned'}`;
+                      message = `changed assignment from ${getUserName(log.oldValue)} to ${getUserName(log.newValue)}`;
                       break;
                     default:
                       message = `updated field ${log.field}`;

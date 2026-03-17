@@ -30,7 +30,7 @@ const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
 ];
 
 const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [staff, setStaff] = useState<User[]>([]);
@@ -64,30 +64,24 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
       setFormData({ title: '', description: '', priority: 'P2', status: 'TODO', assignedToId: '', tags: '', dueDate: '', assetId: '' });
       
       // Fetch staff
-      fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      fetch('/api/users')
         .then(r => r.ok ? r.json() : [])
         .then(data => setStaff(Array.isArray(data) ? data.filter((u: User) => u.isActive) : []))
         .catch(() => setStaff([]));
 
       // Fetch assets
-      fetch('/api/assets', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      fetch('/api/assets')
         .then(r => r.ok ? r.json() : [])
         .then(data => setAssets(Array.isArray(data) ? data : []))
         .catch(() => setAssets([]));
 
       // Fetch templates
-      fetch('/api/templates', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      fetch('/api/templates')
         .then(r => r.ok ? r.json() : [])
         .then(data => setTemplates(Array.isArray(data) ? data : []))
         .catch(() => setTemplates([]));
     }
-  }, [isOpen, token]);
+  }, [isOpen]);
 
   const handleTemplateSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const tId = parseInt(e.target.value);
@@ -126,8 +120,7 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
       const res = await fetch('/api/tickets', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(body),
       });

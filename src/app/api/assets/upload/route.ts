@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { prisma } from '@/lib/prisma';
 
-export const POST = withAuth(async (req: NextRequest) => {
+export const POST = withAuth(async (req: NextRequest, user: any) => {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -19,11 +20,24 @@ export const POST = withAuth(async (req: NextRequest) => {
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(filePath, buffer);
 
+    // Save to database
+    const attachment = await prisma.attachment.create({
+      data: {
+        fileName: file.name,
+        filePath: `${ticketId}/${fileName}`,
+        fileSize: file.size,
+        mimeType: file.type,
+        ticketId: parseInt(ticketId),
+        authorId: user.id
+      }
+    });
+
     return NextResponse.json({
-      path: `${ticketId}/${fileName}`,
-      name: file.name,
-      size: file.size,
-      type: file.type,
+      path: attachment.filePath,
+      name: attachment.fileName,
+      size: attachment.fileSize,
+      type: attachment.mimeType,
+      id: attachment.id
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

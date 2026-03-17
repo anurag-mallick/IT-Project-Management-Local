@@ -10,7 +10,7 @@ interface NewUserModalProps {
 }
 
 const NewUserModal = ({ isOpen, onClose, onSuccess }: NewUserModalProps) => {
-  const { token } = useAuth();
+  const {} = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -29,8 +29,7 @@ const NewUserModal = ({ isOpen, onClose, onSuccess }: NewUserModalProps) => {
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           ...formData,

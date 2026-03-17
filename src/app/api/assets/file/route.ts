@@ -13,7 +13,23 @@ export const GET = withAuth(async (req: NextRequest) => {
     const fullPath = path.join(process.cwd(), 'uploads', safePath);
 
     const buffer = await readFile(fullPath);
-    return new NextResponse(buffer);
+    const ext = path.extname(fullPath).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.pdf': 'application/pdf',
+      '.txt': 'text/plain',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.csv': 'text/csv',
+      '.json': 'application/json'
+    };
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    return new NextResponse(buffer, {
+      headers: { 'Content-Type': contentType }
+    });
   } catch {
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }

@@ -26,24 +26,32 @@ export async function POST(req: Request) {
     }
 
     // --- Intelligent Assignment logic ---
-    // Find staff with the least number of open tickets
     const staff = await prisma.user.findMany({
       where: { role: 'STAFF' },
       include: {
         _count: {
-          select: { assignedTickets: { where: { status: { notIn: ['RESOLVED', 'CLOSED'] } } } }
+          select: { tickets: { where: { status: { notIn: ['RESOLVED', 'CLOSED'] } } } }
         }
       }
     });
 
+    if (staff.length === 0) {
+      return NextResponse.json({
+        priority,
+        assignedToId: null,
+        assignedToName: 'Unassigned',
+        reason: 'No staff available for assignment'
+      });
+    }
+
     // Simple load balancer: pick staff with minimum ticket count
-    const sortedStaff = staff.sort((a, b) => a._count.assignedTickets - b._count.assignedTickets);
-    const assignedToId = sortedStaff[0]?.id || null;
+    const sortedStaff = staff.sort((a, b) => (a._count as any).tickets - (b._count as any).tickets);
+    const assignedToId = sortedStaff[0]?.id;
 
     const triageResult = {
       priority,
       assignedToId,
-      assignedToName: sortedStaff[0]?.name || 'Unassigned',
+      assignedToName: sortedStaff[0]?.name || 'Staff',
       reason: `Auto-triaged based on keywords: ${priority === 'P0' ? 'Critical' : priority === 'P1' ? 'Major' : 'Routine'}`
     };
 

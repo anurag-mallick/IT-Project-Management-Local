@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 
-export const PUT = withAuth(async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
+export const PUT = withAuth(async (req: NextRequest, user: any, { params }: { params: Promise<{ id: string }> }) => {
     const dbUser = await prisma.user.findUnique({
     where: { email: user.email },
     select: { role: true }
@@ -38,7 +38,7 @@ export const PUT = withAuth(async (req: NextRequest, user: any, { params }: { pa
   }
 });
 
-export const DELETE = withAuth(async (req: NextRequest, user: any, { params }: { params: { id: string } }) => {
+export const DELETE = withAuth(async (req: NextRequest, user: any, { params }: { params: Promise<{ id: string }> }) => {
     const dbUser = await prisma.user.findUnique({
     where: { email: user.email },
     select: { role: true }

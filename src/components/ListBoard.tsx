@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ChevronRight, Loader2, AlertCircle, List, ArrowUpDown, Trash2, CheckCircle, AlertOctagon, User as UserIcon } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Ticket } from '@/types';
+import { Ticket, User } from '@/types';
 import TicketDetailModal from '@/components/TicketDetailModal';
 
 const priorityColor: Record<string, string> = {
@@ -59,7 +59,11 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
     }
   };
 
-  useEffect(() => { fetchTickets(pagination.page); }, [pagination.page]);
+  useEffect(() => { 
+    fetchTickets(pagination.page); 
+    const interval = setInterval(() => fetchTickets(pagination.page), 15000);
+    return () => clearInterval(interval);
+  }, [pagination.page]);
 
   const toggleSelectAll = () => {
     if (selectedTicketIds.size === filteredTickets.length) {
