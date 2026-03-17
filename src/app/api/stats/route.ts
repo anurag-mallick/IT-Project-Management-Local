@@ -34,10 +34,7 @@ export const GET = withAuth(async () => {
       })
     ]);
 
-    console.log("Runtime DATABASE_URL in api route:", process.env.DATABASE_URL);
-
-    // Get current date and date 30 days ago
-    const thirtyDaysAgo = subDays(new Date(), 30);
+    // End of aggregation
 
     return NextResponse.json({
       total,

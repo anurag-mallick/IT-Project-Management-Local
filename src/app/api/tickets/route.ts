@@ -17,10 +17,12 @@ export const GET = withAuth(async (req: NextRequest) => {
 
     const [tickets, totalCount] = await Promise.all([
       prisma.ticket.findMany({
-        include: { 
+        select: {
+          id: true, title: true, status: true, priority: true,
+          createdAt: true, updatedAt: true, dueDate: true, slaBreachAt: true,
+          tags: true, requesterName: true, assetId: true, folderId: true,
           assignedTo: { select: { id: true, username: true, name: true } },
-          comments: { include: { author: { select: { name: true } } }, orderBy: { createdAt: 'asc' } },
-          checklists: { orderBy: { createdAt: 'asc' } }
+          _count: { select: { comments: true, checklists: true } }
         },
         orderBy: { createdAt: 'desc' },
         ...(skipPagination ? {} : { skip, take: pageSize })

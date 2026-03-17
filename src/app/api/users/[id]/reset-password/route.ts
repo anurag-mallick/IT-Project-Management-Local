@@ -3,10 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 
+import bcrypt from 'bcryptjs';
+
 export const POST = withAuth(async (req: NextRequest, user: any) => {
-  // Only admins can reset passwords
-  if (user.role !== 'ADMIN') {
-    return NextResponse.json({ error: "Unauthorized. Admin access required." }, { status: 403 });
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email },
+    select: { role: true }
+  });
+  if (dbUser?.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   try {
@@ -17,12 +22,12 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
       return NextResponse.json({ error: "Invalid User ID" }, { status: 400 });
     }
 
-    // Update password to default: Welcome@123
-    // In a real app, we'd hash this. For now, following project style.
+    const hashed = await bcrypt.hash('Welcome@123', 10);
+    
     await prisma.user.update({
       where: { id: userId },
       data: {
-        password: "Welcome@123", // Plain text or dummy hash per user instructions
+        password: hashed,
       }
     });
 

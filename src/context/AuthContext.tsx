@@ -2,12 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
-  user: any | null; // This will be the DB user profile
-  supabaseUser: User | null;
+  user: any | null; 
   isLoading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -16,11 +13,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
   const [user, setUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClient();
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -29,6 +24,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const dbUser = await res.json();
         setUser(dbUser);
         return dbUser;
+      } else if (res.status === 401) {
+        setUser(null);
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err);
@@ -38,49 +35,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSupabaseUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchProfile();
-      }
-      
+      await fetchProfile();
       setIsLoading(false);
     };
 
     initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSupabaseUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchProfile();
-      } else {
-        setUser(null);
-      }
-      
-      if (event === 'SIGNED_IN') {
-        router.refresh();
-      }
-      if (event === 'SIGNED_OUT') {
-        router.push('/login');
-        router.refresh();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [fetchProfile, router, supabase.auth]);
+  }, [fetchProfile]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null);
+    router.push('/login');
+    router.refresh();
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, 
-      supabaseUser, 
       isLoading, 
       signOut,
       refreshProfile: fetchProfile 

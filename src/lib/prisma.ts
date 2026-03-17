@@ -14,7 +14,7 @@ if (globalForPrisma.prisma) {
   if (connectionString) {
     const pool = new Pool({ 
       connectionString,
-      ssl: { rejectUnauthorized: false }
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
     });
     const adapter = new PrismaPg(pool as any);
     prismaInstance = new PrismaClient({

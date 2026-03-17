@@ -1,49 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from './supabase/server';
-import { prisma } from '@/lib/prisma';
+import { SignJWT, jwtVerify } from 'jose';
+import { cookies } from 'next/headers';
+import { prisma } from './prisma';
 
-export async function getUser() {
+const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-for-dev-only');
+
+export async function signToken(payload: object) {
+  return new SignJWT(payload as any)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('7d')
+    .sign(secret);
+}
+
+export async function verifyToken(token: string) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) return null;
-    return user;
-  } catch (err) {
-    console.error('getUser error:', err);
+    const { payload } = await jwtVerify(token, secret);
+    return payload;
+  } catch (error) {
     return null;
   }
 }
 
-export async function verifyUser() {
-  const user = await getUser();
-  if (!user) {
-    return { user: null, error: 'Unauthorized' };
+export async function getUser() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('session')?.value;
+    if (!token) return null;
+    const payload = await verifyToken(token);
+    return payload;
+  } catch {
+    return null;
   }
-  return { user, error: null };
 }
 
-export async function isAdmin() {
-  const user = await getUser();
-  if (!user || !user.email) return false;
-  
-  const dbUser = await prisma.user.findUnique({
-    where: { email: user.email }
-  });
-  
-  return dbUser?.role === 'ADMIN';
-}
-
-// Higher order function for API route protection
-export function withAuth(handler: (req: NextRequest, user: any, context?: any) => Promise<NextResponse>) {
-  return async (req: NextRequest, context?: any) => {
-    // For API routes, session check is faster than full getUser
-    const supabase = await createClient();
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (error || !session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    return handler(req, session.user, context);
+export function withAuth(handler: (req: any, user: any, context?: any) => Promise<any>) {
+  return async (req: any, context?: any) => {
+    const user = await getUser();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return handler(req, user, context);
   };
+}
+
+export async function requireAdmin(user: any) {
+  if (!user || !user.email) return false;
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email },
+    select: { role: true }
+  });
+  return dbUser?.role === 'ADMIN';
 }

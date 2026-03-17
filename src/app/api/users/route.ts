@@ -27,21 +27,30 @@ async function getUsersHandler() {
   }
 }
 
+import bcrypt from 'bcryptjs';
+
 async function createUserHandler(req: NextRequest, user: any) {
   try {
-    // Basic implementation for the admin panel's New User Modal
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { role: true }
+    });
+    if (dbUser?.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const data = await req.json();
     
-    // In a real production app, we would create the user in Supabase Auth first
-    // using the service_role key, then insert into Prisma.
-    // Here we just insert into Prisma so the user shows up in the database list.
+    const passwordToHash = data.password || 'Welcome@123';
+    const hashed = await bcrypt.hash(passwordToHash, 10);
+
     const newUser = await prisma.user.create({
       data: {
         username: data.username || data.email?.split('@')[0] || 'user',
         email: data.email,
         name: data.name || '',
         role: data.role || 'STAFF',
-        password: data.password || '$2b$10$abcdefghijklmnopqrstuv', // Dummy hash
+        password: hashed,
         isActive: true
       }
     });
