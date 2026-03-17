@@ -1,36 +1,40 @@
-# Horizon IT - Local VM Edition
+## 🚀 Quick Start (Local PC)
 
-A fully standalone, high-performance IT Project Management tool designed for secure, air-gapped, or local VM deployments. 
-
-> [!IMPORTANT]
-> This version is **100% Supabase-free**. All data, authentication, and file storage are managed locally on your infrastructure.
-
-## 🚀 Quick Start (Docker)
+These steps are optimized for running the application directly on your local machine using Docker for the database.
 
 ### 1. Prerequisites
-- **Docker** and **Docker Compose** installed.
-- Minimum **2GB RAM** (4GB recommended).
+- **Node.js 20+**
+- **Docker Desktop** (must be running)
 
 ### 2. Setup Configuration
 Clone the repository and create your environment file:
 ```bash
 cp .env.example .env
 ```
-Edit `.env` and set secure values for `POSTGRES_PASSWORD` and `JWT_SECRET`.
+Edit `.env` and ensure `DATABASE_URL` and `DIRECT_URL` point to `localhost:5432`.
 
 ### 3. Launch
 ```bash
-docker-compose up -d --build
+# Install dependencies
+npm install
+
+# Start the database container
+docker-compose up -d db
+
+# Sync database schema
+npx prisma db push
+
+# Seed the database (Admin Account & Policies)
+node scripts/seed-pg.js
+
+# Start Development Server
+npm run dev
 ```
-The application will automatically:
-- Start a local PostgreSQL 17 instance.
-- Build the Next.js application.
-- Run database migrations via Prisma.
-- Initialize local file storage volumes.
 
 ### 4. Access
-- **Web UI**: `http://<your-vm-ip>:3000`
-- **Default Login**: Use the `create-admin` script (see below) or seed the database.
+- **Web UI**: [http://localhost:3000](http://localhost:3000)
+- **Admin Email**: `admin@horizon-it.local`
+- **Admin Password**: `AdminPassword123!`
 
 ---
 
@@ -38,19 +42,15 @@ The application will automatically:
 
 | Action | Command |
 | :--- | :--- |
-| **Create Admin** | `docker-compose exec app npm run create-admin` |
-| **Seed Demo Data** | `docker-compose exec app npm run seed` |
-| **View Logs** | `docker-compose logs -f app` |
-| **Stop App** | `docker-compose down` |
+| **Reset Database** | `docker-compose down -v && docker-compose up -d db` |
+| **Push Schema** | `npx prisma db push` |
+| **Run Seed** | `node scripts/seed-pg.js` |
 
 ---
 
 ## 📦 Architecture
-- **Framework**: Next.js 15 (App Router)
-- **Database**: PostgreSQL (Local)
-- **Auth**: Local JWT (HttpOnly Cookies) + bcryptjs
-- **Storage**: Local Disk (with Docker Volume persistence)
-- **Real-time**: Intelligent Polling (No external sockets required)
-
-## 📖 Deployment Guide
-For advanced configuration, performance tuning, and SSL setup, refer to the [VM_INSTALL_GUIDE.md](./VM_INSTALL_GUIDE.md).
+- **Framework**: Next.js 15 (Standardized API Routes)
+- **Database**: PostgreSQL (Docker-based)
+- **Auth**: Local JWT (HttpOnly Cookies)
+- **Storage**: Local File System (under `/uploads`)
+- **Real-time**: Intelligent Polling System
