@@ -1,36 +1,38 @@
-# 🚀 Horizon IT – Main Application
+# Horizon IT - Local VM Installation Copy
 
-This directory contains the Next.js application for the **Horizon IT** management suite.
+Standalone IT Project Management tool optimized for local virtual machine deployment (up to 20 users).
 
-## 🏗️ Technical Architecture
+## 🚀 Independent Deployment
+This version is fully decoupled from Supabase. It uses a local PostgreSQL instance running via Docker.
 
-- **Framework**: Next.js 15 (App Router)
-- **Styling**: Tailwind CSS v4 + Vanilla CSS for custom Glassmorphism effects.
-- **State Management**: React Context API for Authentication.
-- **Realtime**: Supabase JS Client for live ticket subscriptions.
-- **Icons**: Lucide React.
-- **Type Safety**: TypeScript 5.x.
+## 🛠️ Installation Guide
 
-## 📁 Key Directories
+### Prerequisites
+- Docker and Docker Compose installed on the VM.
+- Access to the terminal.
 
-- `src/app`: Page components and API routes (Next.js App Router).
-- `src/components`: UI components (Kanban, List, Modals, ITAM cards).
-- `src/context`: Authentication and global state providers.
-- `src/lib`: Shared utility functions (Supabase client, search helpers).
-- `src/types`: Centralized TypeScript interfaces.
+### Step 1: Clone or Copy
+Copy this entire directory to your VM.
 
-## 🛠️ Local Development
+### Step 2: Configure Environment
+The `.env` file is pre-configured for Docker. You generally don't need to change anything unless you want to update the database password.
 
-1.  **Configure Environment**: Ensure you have a `.env.local` file with Supabase and Database credentials (see root README for details).
-2.  **Install Dependencies**: `npm install`
-3.  **Launch**: `npm run dev`
+### Step 3: Launch
+Run the following command in the root directory:
+```bash
+docker-compose up -d --build
+```
 
-## 🎨 Design Principles
+### Step 4: Initialize Database
+Wait about 10 seconds for the database to start, then run:
+```bash
+docker-compose exec app npx prisma db push
+```
 
-The Horizon IT interface follows a **Premium Dark** aesthetic:
-- **Glassmorphism**: Backdrop blurs and semi-transparent layers for depth.
-- **Fluid Motion**: Framer Motion for non-blocking transitions.
-- **Unified Search**: Instant, cross-module discovery via the global NavHeader.
+## 📋 Features
+- **Local PostgreSQL**: Data stays on your VM.
+- **Resource Efficient**: Optimized for 2-4GB RAM VMs.
+- **20 Users Capacity**: Pre-configured connection pooling for 20 concurrent users.
 
----
-For the full system setup and backend configuration, please refer to the **[Root README](../README.md)**.
+## 📖 Detailed Guide
+See [VM_INSTALL_GUIDE.md](./VM_INSTALL_GUIDE.md) for advanced configuration and performance tuning.
