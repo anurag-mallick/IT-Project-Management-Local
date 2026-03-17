@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=DzVJU4T4PHQ08V7c
+      - POSTGRES_DB=horizon_it
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:DzVJU4T4PHQ08V7c@db:5432/horizon_it
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:11352 # Local Supabase or Mock
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=mock-key
+    depends_on:
+      - db
+
+volumes:
+  db-data:

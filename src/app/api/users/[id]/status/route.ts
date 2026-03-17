@@ -1,0 +1,36 @@
+export const dynamic = 'force-dynamic'
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/auth";
+
+export const PUT = withAuth(async (req: NextRequest, user: any) => {
+  // Only admins can activate/deactivate users
+  if (user.role !== 'ADMIN') {
+    return NextResponse.json({ error: "Unauthorized. Admin access required." }, { status: 403 });
+  }
+
+  try {
+    const id = req.nextUrl.pathname.split('/').slice(-2, -1)[0];
+    const userId = parseInt(id);
+
+    if (isNaN(userId)) {
+      return NextResponse.json({ error: "Invalid User ID" }, { status: 400 });
+    }
+
+    const { isActive } = await req.json();
+
+    if (typeof isActive !== 'boolean') {
+      return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { isActive }
+    });
+
+    return NextResponse.json(updatedUser);
+  } catch (error: any) {
+    console.error("Update User Status Error:", error);
+    return NextResponse.json({ error: error.message || "Failed to update user status" }, { status: 500 });
+  }
+});
