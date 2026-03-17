@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { createClient } from '@/lib/supabase/client';
 import TaskCard from "./TaskCard";
 import TicketDetailModal from "@/components/TicketDetailModal";
 import { Ticket, TicketStatus, User } from "@/types";
@@ -19,7 +18,6 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [columns, setColumns] = useState<{ id: number; title: string; order: number }[]>([]);
-  const supabase = createClient();
 
   const fetchColumns = async () => {
     try {
@@ -63,35 +61,13 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
     fetchTickets();
     fetchColumns();
 
-    const channel = supabase
-      .channel("ticket-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "Ticket" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setTickets((prev) => [payload.new as Ticket, ...prev]);
-          } else if (payload.eventType === "UPDATE") {
-            setTickets((prev) =>
-              prev.map((t) =>
-                t.id === (payload.new as Ticket).id
-                  ? { ...t, ...(payload.new as Ticket) }
-                  : t,
-              ),
-            );
-          } else if (payload.eventType === "DELETE") {
-            setTickets((prev) =>
-              prev.filter((t) => t.id === (payload.old as Ticket).id),
-            );
-          }
-        },
-      )
-      .subscribe();
+    // Poll for updates every 10 seconds
+    const interval = setInterval(() => {
+      fetchTickets();
+    }, 10000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
+    return () => clearInterval(interval);
+  }, []);
 
   const moveTicket = async (ticketId: number, newStatus: TicketStatus) => {
     const originalTickets = [...tickets];

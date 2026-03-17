@@ -1,37 +1,21 @@
-import { createClient } from './supabase/client';
+export async function uploadAttachment(ticketId: number, file: File): Promise<{ path: string; name: string; size: number; type: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('ticketId', ticketId.toString());
 
-const BUCKET_NAME = 'attachments';
+  const res = await fetch('/api/assets/upload', {
+    method: 'POST',
+    body: formData,
+  });
 
-export async function uploadAttachment(ticketId: number, file: File) {
-  const supabase = createClient();
-  const fileExt = file.name.split('.').pop();
-  const filePath = `${ticketId}/${Math.random()}.${fileExt}`;
-
-  const { data, error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(filePath, file, { upsert: false });
-
-  if (error) {
-    throw error;
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Upload failed');
   }
 
-  return {
-    path: data.path,
-    name: file.name,
-    size: file.size,
-    type: file.type
-  };
+  return res.json();
 }
 
-export async function getFileUrl(path: string) {
-  const supabase = createClient();
-  const { data, error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .createSignedUrl(path, 3600); // 1 hour
-
-  if (error) {
-    throw error;
-  }
-
-  return data.signedUrl;
+export async function getFileUrl(path: string): Promise<string> {
+  return `/api/assets/file?path=${encodeURIComponent(path)}`;
 }

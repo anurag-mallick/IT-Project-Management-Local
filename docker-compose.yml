@@ -29,6 +29,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - uploads-data:/app/uploads
 
 volumes:
   db-data:
+  uploads-data:

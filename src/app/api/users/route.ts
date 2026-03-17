@@ -3,23 +3,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth";
 
-async function getUsersHandler() {
+async function getUsersHandler(req: NextRequest, user: any) {
   try {
-    // Return all users from the database, regardless of role, 
-    // so tickets can be assigned to anyone.
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { role: true }
+    });
+    const isAdmin = dbUser?.role === 'ADMIN';
+
     const users = await prisma.user.findMany({
       select: {
         id: true,
         name: true,
         username: true,
-        email: true,
-        role: true,
         isActive: true,
-        createdAt: true,
+        ...(isAdmin ? { email: true, role: true, createdAt: true } : {})
       },
+      where: isAdmin ? {} : { isActive: true },
       orderBy: { name: 'asc' }
     });
-    
+
     return NextResponse.json(users);
   } catch (error) {
     console.error("Error fetching users:", error);

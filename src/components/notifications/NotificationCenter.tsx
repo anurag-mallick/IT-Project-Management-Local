@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, Info, AlertTriangle, CheckCircle, Package } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 
 interface Notification {
@@ -17,7 +16,6 @@ interface Notification {
 const NotificationCenter = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const supabase = createClient();
 
   const addNotification = React.useCallback((notif: Notification) => {
     setNotifications(prev => [notif, ...prev]);
@@ -48,24 +46,31 @@ const NotificationCenter = () => {
       }
     ]);
 
-    // Real-time subscription for important events
-    const channel = supabase
-      .channel('notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Ticket' }, (payload) => {
-        const newTicket = payload.new as any;
-        addNotification({
-          id: Math.random().toString(),
-          title: 'New Ticket Created',
-          message: `Ticket #${newTicket.id}: ${newTicket.title}`,
-          type: 'new_ticket',
-          timestamp: new Date(),
-          read: false
-        });
-      })
-      .subscribe();
+    // Poll for new tickets every 15 seconds
+    let lastKnownId = 0;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/tickets?pageSize=1&page=1');
+        if (res.ok) {
+          const data = await res.json();
+          const latest = data.tickets?.[0];
+          if (latest && latest.id > lastKnownId && lastKnownId !== 0) {
+            addNotification({
+              id: Math.random().toString(),
+              title: 'New Ticket Created',
+              message: `Ticket #${latest.id}: ${latest.title}`,
+              type: 'new_ticket',
+              timestamp: new Date(),
+              read: false
+            });
+          }
+          if (latest) lastKnownId = latest.id;
+        }
+      } catch (e) {}
+    }, 15000);
 
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, addNotification]);
+    return () => clearInterval(interval);
+  }, [addNotification]);
 
   const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));

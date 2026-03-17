@@ -2,7 +2,8 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { prisma } from './prisma';
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-for-dev-only');
+if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set');
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function signToken(payload: object) {
   return new SignJWT(payload as any)
