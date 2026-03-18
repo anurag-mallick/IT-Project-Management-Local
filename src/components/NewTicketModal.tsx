@@ -134,6 +134,10 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
             await uploadAttachment(newTicket.id, attachment);
           } catch (uploadErr) {
             console.error("Failed to upload attachment during creation", uploadErr);
+            setError('Ticket created, but attachment upload failed. Please try uploading the file again.');
+            setLoading(false);
+            onSuccess(); // still refresh the list
+            return;     // do NOT call onClose()
           }
         }
         

@@ -9,14 +9,13 @@ import { Loader2 } from "lucide-react";
 interface KanbanProps {
   searchQuery?: string;
   users?: User[];
-  assets?: any[];
+  assets?: { id: number; name: string; type: string }[];
 }
 
 const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [columns, setColumns] = useState<{ id: number; title: string; order: number }[]>([]);
 
   const fetchColumns = async () => {
@@ -43,14 +42,12 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
 
   const fetchTickets = async () => {
     setIsLoading(true);
-    setError(null);
     try {
       const res = await fetch("/api/tickets/kanban");
       if (!res.ok) throw new Error("Failed to fetch tickets");
       const data = await res.json();
       setTickets(data.tickets || []);
-    } catch (err: any) {
-      setError(err.message || "Connection error");
+    } catch (err: unknown) {
       console.error("Fetch Error:", err);
     } finally {
       setIsLoading(false);
@@ -69,6 +66,13 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (selectedTicket) {
+      const updated = tickets.find(t => t.id === selectedTicket.id);
+      if (updated) setSelectedTicket(updated);
+    }
+  }, [tickets, selectedTicket]);
+
   const moveTicket = async (ticketId: number, newStatus: TicketStatus) => {
     const originalTickets = [...tickets];
     setTickets((prev) =>
@@ -84,13 +88,13 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) throw new Error("Failed to move ticket");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setTickets(originalTickets);
-      setError(err.message);
+      console.error(err);
     }
   };
 
-  const onDragEnd = (result: DropResult) => {
+  const onDragEnd = (result: { destination: any; source: any; draggableId: string }) => {
     if (!result.destination) return;
     const { source, destination, draggableId } = result;
     if (source.droppableId === destination.droppableId) return;

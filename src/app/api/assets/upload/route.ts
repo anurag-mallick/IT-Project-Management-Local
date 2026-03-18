@@ -4,13 +4,31 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
 
-export const POST = withAuth(async (req: NextRequest, user: any) => {
+export const POST = withAuth(async (req: NextRequest, user: { email: string; id: number; name?: string; username: string; role: string }) => {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const ticketId = formData.get('ticketId') as string;
 
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    const ALLOWED_TYPES = [
+      'image/png', 
+      'image/jpeg', 
+      'image/gif', 
+      'application/pdf', 
+      'text/plain', 
+      'text/csv', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'File exceeds 10MB limit' }, { status: 400 });
+    }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
+    }
 
     const uploadDir = path.join(process.cwd(), 'uploads', ticketId);
     await mkdir(uploadDir, { recursive: true });
@@ -39,7 +57,7 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
       type: attachment.mimeType,
       id: attachment.id
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 });

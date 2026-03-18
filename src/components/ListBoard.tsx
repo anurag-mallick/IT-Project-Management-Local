@@ -41,6 +41,11 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
   const [error, setError] = useState<string | null>(null);
   const { user: authUser } = useAuth();
   const isAdmin = authUser?.role === 'ADMIN';
+  const currentPageRef = React.useRef(pagination.page);
+
+  useEffect(() => {
+    currentPageRef.current = pagination.page;
+  }, [pagination.page]);
 
   const fetchTickets = async (page = 1) => {
     setLoading(true);
@@ -60,10 +65,10 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
   };
 
   useEffect(() => { 
-    fetchTickets(pagination.page); 
-    const interval = setInterval(() => fetchTickets(pagination.page), 15000);
+    fetchTickets(currentPageRef.current); 
+    const interval = setInterval(() => fetchTickets(currentPageRef.current), 15000);
     return () => clearInterval(interval);
-  }, [pagination.page]);
+  }, []); // run once only
 
   const toggleSelectAll = () => {
     if (selectedTicketIds.size === filteredTickets.length) {

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendSlackNotification } from '@/lib/notifications';
+import { withAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+export const POST = withAuth(async (req: Request) => {
   try {
-    const { title, description, category } = await req.json();
+    const { title, description } = await req.json();
 
     if (!title || !description) {
       return NextResponse.json({ error: 'Title and description are required' }, { status: 400 });
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     // Simple load balancer: pick staff with minimum ticket count
-    const sortedStaff = staff.sort((a, b) => (a._count as any).tickets - (b._count as any).tickets);
+    const sortedStaff = staff.sort((a, b) => (a._count as { tickets: number }).tickets - (b._count as { tickets: number }).tickets);
     const assignedToId = sortedStaff[0]?.id;
 
     const triageResult = {
@@ -55,12 +55,9 @@ export async function POST(req: Request) {
       reason: `Auto-triaged based on keywords: ${priority === 'P0' ? 'Critical' : priority === 'P1' ? 'Major' : 'Routine'}`
     };
 
-    // If it's a P0, trigger Slack immediately (even before ticket is fully saved if we were creating it here)
-    // In a real scenario, this would be part of the ticket creation flow or a manual 'Triage' button.
-    
-    return NextResponse.json(triageResult);
-  } catch (err: any) {
+    return Response.json(triageResult);
+  } catch (err: unknown) {
     console.error('Triage error:', err);
-    return NextResponse.json({ error: 'Triage failed', details: err.message }, { status: 500 });
+    return Response.json({ error: 'Triage failed', details: (err as Error).message }, { status: 500 });
   }
-}
+});

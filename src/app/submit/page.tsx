@@ -76,7 +76,6 @@ const PublicTicketForm = () => {
               <option value="P3">P3 – Low</option>
               <option value="P2">P2 – Normal</option>
               <option value="P1">P1 – High</option>
-              <option value="P0">P0 – Critical</option>
             </select>
           </div>
         </div>

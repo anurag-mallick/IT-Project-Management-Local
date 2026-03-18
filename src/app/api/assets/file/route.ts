@@ -10,7 +10,12 @@ export const GET = withAuth(async (req: NextRequest) => {
 
     // Prevent path traversal
     const safePath = path.normalize(filePath).replace(/^(\.\.(\/|\\|$))+/, '');
-    const fullPath = path.join(process.cwd(), 'uploads', safePath);
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const fullPath = path.join(uploadsDir, safePath);
+
+    if (!fullPath.startsWith(uploadsDir + path.sep)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const buffer = await readFile(fullPath);
     const ext = path.extname(fullPath).toLowerCase();
