@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import Link from 'next/link';
 
 const PublicTicketForm = () => {
   const [submitted, setSubmitted] = useState(false);
@@ -21,7 +22,8 @@ const PublicTicketForm = () => {
         body: JSON.stringify(formData),
       });
       if (res.ok) setSubmitted(true);
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       alert('Failed to submit ticket. Is the backend running?');
     } finally {
       setLoading(false);
@@ -42,9 +44,9 @@ const PublicTicketForm = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <header className="h-14 border-b border-white/5 flex items-center px-8 gap-4 bg-black/20 backdrop-blur-md">
-        <a href="/" className="text-white/40 hover:text-white text-sm font-medium transition-colors flex items-center gap-2">
+        <Link href="/" className="text-white/40 hover:text-white text-sm font-medium transition-colors flex items-center gap-2">
           ← Back to Dashboard
-        </a>
+        </Link>
         <div className="w-px h-4 bg-white/10" />
         <span className="text-sm font-bold text-white/60">Submit Support Request</span>
       </header>

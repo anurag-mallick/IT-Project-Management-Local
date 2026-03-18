@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { X, Calendar as CalendarIcon, Clock, CheckCircle, Tag, ChevronDown, Folder as FolderIcon, Upload, File, Layout, Server, AlertCircle } from 'lucide-react';
+import { X, Upload, Server, AlertCircle } from 'lucide-react';
 import { TicketStatus, Priority, User } from '../types';
 import { uploadAttachment } from '@/lib/storage';
 
@@ -18,7 +17,7 @@ interface Template {
   status: TicketStatus;
   priority: Priority;
   tags: string[];
-  checklists: any;
+  checklists: { id: number; title: string; isCompleted: boolean }[];
 }
 
 // P0 = Critical (highest), P1 = High, P2 = Normal (default), P3 = Low
@@ -30,13 +29,12 @@ const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
 ];
 
 const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [staff, setStaff] = useState<User[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [assets, setAssets] = useState<any[]>([]);
+  const [assets, setAssets] = useState<{ id: number; name: string; type: string }[]>([]);
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
@@ -106,7 +104,16 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
     setError('');
     setLoading(true);
     try {
-      const body: any = {
+      const body: {
+        title: string;
+        description: string;
+        priority: Priority;
+        status: TicketStatus;
+        tags: string[];
+        assignedToId?: number;
+        dueDate?: string;
+        assetId?: number;
+      } = {
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
@@ -153,8 +160,8 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
       } catch {
         setError(`Connection error (${res.status}): ${res.statusText}`);
       }
-    } catch (err: any) {
-      setError(`Network error: ${err.message || 'Check your connection'}`);
+    } catch (err: unknown) {
+      setError(`Network error: ${err instanceof Error ? err.message : 'Check your connection'}`);
     } finally {
       setLoading(false);
     }
@@ -247,7 +254,7 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-1 block flex items-center gap-2">
+              <label className="text-[10px] uppercase tracking-widest text-white/40 font-bold ml-1 block items-center gap-2">
                 <Server size={14} />
                 Related Asset (Optional)
               </label>
@@ -283,7 +290,7 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
               type="date" 
               value={formData.dueDate}
               onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-colors [color-scheme:dark]"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-colors scheme-dark"
             />
           </div>
 

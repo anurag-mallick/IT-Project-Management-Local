@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { ChevronRight, Loader2, AlertCircle, List, ArrowUpDown, Trash2, CheckCircle, AlertOctagon, User as UserIcon } from 'lucide-react';
+import { ChevronRight, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Ticket, User } from '@/types';
 import TicketDetailModal from '@/components/TicketDetailModal';
@@ -28,7 +28,7 @@ const statusColors: Record<string, string> = {
 interface ListBoardProps {
   searchQuery?: string;
   users?: User[];
-  assets?: any[];
+  assets?: { id: number; name: string; type: string }[];
 }
 
 const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
@@ -57,8 +57,8 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
       setTickets(data.tickets);
       setPagination(data.pagination);
       setSelectedTicketIds(new Set()); // clear selection on page change
-    } catch (err: any) {
-      setError(err.message || 'Connection error');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Connection error');
     } finally {
       setLoading(false);
     }
@@ -95,10 +95,10 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
     setSavingBulk(true);
     try {
-      const data: any = {};
+      const data: Record<string, string | number | boolean | undefined> = {};
       if (actionType === 'status') data.status = value;
       if (actionType === 'priority') data.priority = value;
-      if (actionType === 'assignee') data.assignedToId = value;
+      if (actionType === 'assignee') data.assignedToId = value ? parseInt(value) : undefined;
       if (actionType === 'delete') data.delete = true;
 
       const res = await fetch('/api/tickets/bulk', {
@@ -170,7 +170,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
       <div className="glass-card overflow-hidden flex flex-col h-[700px] relative">
         {/* Table Header */}
         <div className="flex border-b border-white/5 bg-white/5 text-[10px] uppercase tracking-widest text-white/40 font-bold items-center">
-          <div className="w-12 px-4 py-4 flex-shrink-0 flex items-center justify-center">
+          <div className="w-12 px-4 py-4 shrink-0 flex items-center justify-center">
             <input 
               type="checkbox" 
               checked={selectedTicketIds.size === filteredTickets.length && filteredTickets.length > 0}
@@ -178,13 +178,13 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
               className="rounded border-white/10 bg-black/20 text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
             />
           </div>
-          <div className="w-16 px-4 py-4 flex-shrink-0">ID</div>
+          <div className="w-16 px-4 py-4 shrink-0">ID</div>
           <div className="flex-1 px-6 py-4 min-w-0">Title</div>
-          <div className="w-32 px-6 py-4 flex-shrink-0">Status</div>
-          <div className="w-32 px-6 py-4 flex-shrink-0">Priority</div>
-          <div className="w-40 px-6 py-4 flex-shrink-0">Requester</div>
-          <div className="w-32 px-6 py-4 flex-shrink-0">Created</div>
-          <div className="w-12 px-6 py-4 flex-shrink-0"></div>
+          <div className="w-32 px-6 py-4 shrink-0">Status</div>
+          <div className="w-32 px-6 py-4 shrink-0">Priority</div>
+          <div className="w-40 px-6 py-4 shrink-0">Requester</div>
+          <div className="w-32 px-6 py-4 shrink-0">Created</div>
+          <div className="w-12 px-6 py-4 shrink-0"></div>
         </div>
 
         {/* virtualized Scroll Container */}
@@ -217,37 +217,37 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
                     }}
                     onClick={() => setSelectedTicket(ticket)}
                   >
-                    <div className="w-12 px-4 py-4 h-full flex items-center justify-center flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    <div className="w-12 px-4 py-4 h-full flex items-center justify-center shrink-0" onClick={e => e.stopPropagation()}>
                        <input 
                         type="checkbox" 
                         checked={selectedTicketIds.has(ticket.id)}
-                        onChange={(e) => toggleSelectTicket(ticket.id, e as any)}
+                        onChange={(e) => toggleSelectTicket(ticket.id, e as unknown as React.MouseEvent)}
                         className="rounded border-white/10 bg-black/20 text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                       />
                     </div>
-                    <div className="w-16 px-4 py-4 h-full flex items-center font-mono text-xs text-white/30 flex-shrink-0">
+                    <div className="w-16 px-4 py-4 h-full flex items-center font-mono text-xs text-white/30 shrink-0">
                       #{ticket.id}
                     </div>
                     <div className="flex-1 px-6 py-4 h-full flex items-center text-sm font-medium overflow-hidden">
                       <span className="truncate">{ticket.title}</span>
                     </div>
-                    <div className="w-32 px-6 py-4 h-full flex items-center flex-shrink-0">
+                    <div className="w-32 px-6 py-4 h-full flex items-center shrink-0">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tight ${statusColors[ticket.status] ?? 'bg-white/5 text-white/50'}`}>
                         {ticket.status.replace('_', ' ')}
                       </span>
                     </div>
-                    <div className="w-32 px-6 py-4 h-full flex items-center flex-shrink-0">
+                    <div className="w-32 px-6 py-4 h-full flex items-center shrink-0">
                       <span className={`text-[10px] font-bold ${priorityColor[ticket.priority] ?? 'text-white/40'}`}>
                         {PRIORITY_LABELS[ticket.priority] ?? ticket.priority}
                       </span>
                     </div>
-                    <div className="w-40 px-6 py-4 h-full flex items-center text-xs text-white/40 flex-shrink-0">
+                    <div className="w-40 px-6 py-4 h-full flex items-center text-xs text-white/40 shrink-0">
                       <span className="truncate">{ticket.requesterName || ticket.authorName || '—'}</span>
                     </div>
-                    <div className="w-32 px-6 py-4 h-full flex items-center text-xs text-white/30 flex-shrink-0">
+                    <div className="w-32 px-6 py-4 h-full flex items-center text-xs text-white/30 shrink-0">
                       {new Date(ticket.createdAt).toLocaleDateString()}
                     </div>
-                    <div className="w-12 px-6 py-4 h-full flex items-center justify-end flex-shrink-0">
+                    <div className="w-12 px-6 py-4 h-full flex items-center justify-end shrink-0">
                       <ChevronRight size={16} className="text-white/20 group-hover:text-white/60 transition-colors" />
                     </div>
                   </div>

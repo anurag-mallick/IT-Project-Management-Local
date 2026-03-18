@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import TaskCard from "./TaskCard";
 import TicketDetailModal from "@/components/TicketDetailModal";
 import { Ticket, TicketStatus, User } from "@/types";
-import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Loader2 } from "lucide-react";
 
 interface KanbanProps {
@@ -94,7 +94,7 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
     }
   };
 
-  const onDragEnd = (result: { destination: any; source: any; draggableId: string }) => {
+  const onDragEnd = (result: { destination: { droppableId: string } | null; source: { droppableId: string }; draggableId: string }) => {
     if (!result.destination) return;
     const { source, destination, draggableId } = result;
     if (source.droppableId === destination.droppableId) return;
@@ -123,7 +123,7 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
         {columns.map((col) => (
           <div
             key={col.id}
-            className="min-w-[320px] w-[320px] flex-shrink-0 flex flex-col glass-card custom-scrollbar"
+            className="min-w-[320px] w-[320px] shrink-0 flex flex-col glass-card custom-scrollbar"
           >
             <div className="p-4 border-b border-white/5 flex items-center justify-between">
               <h3 className="font-bold text-sm">{col.title}</h3>
