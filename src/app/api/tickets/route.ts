@@ -7,7 +7,7 @@ import { runAutomations } from '@/lib/automations';
 import { TicketStatus, TicketPriority } from '@/generated/prisma';
 import { sendTicketEmail } from '@/lib/email';
 
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(async (req: NextRequest, user: any) => {
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -44,7 +44,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   }
 });
 
-export const POST = withAuth(async (req: NextRequest) => {
+export const POST = withAuth(async (req: NextRequest, user: any) => {
   try {
     const body = await req.json();
     const { title, description, priority, status, assignedToId, assetId, tags } = body;
@@ -71,6 +71,20 @@ export const POST = withAuth(async (req: NextRequest) => {
         slaBreachAt: slaBreachAt || undefined
       },
       include: { assignedTo: { select: { id: true, username: true, name: true } } }
+    });
+
+    // Log the creation
+    const dbUser = await prisma.user.findFirst({
+      where: { username: (user as any).email }
+    });
+    
+    await prisma.activityLog.create({
+      data: {
+        ticketId: ticket.id,
+        userId: dbUser?.id,
+        action: 'TICKET_CREATED',
+        newValue: title
+      }
     });
 
     // Run Automations

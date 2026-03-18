@@ -116,6 +116,8 @@ model ActivityLog {
   oldValue  String?
   newValue  String?
   createdAt DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 model SavedView {

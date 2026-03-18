@@ -13,7 +13,7 @@ interface TicketDetailModalProps {
   onClose: () => void;
   onUpdate: () => void;
   users?: User[];
-  assets?: any[];
+  assets?: { id: number; name: string; type: string }[];
 }
 
 const STATUS_OPTIONS = ['TODO','IN_PROGRESS','AWAITING_USER','RESOLVED','CLOSED'];
@@ -27,12 +27,12 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: initialAssets }: TicketDetailModalProps) => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
   const [comments, setComments] = useState<TicketComment[]>([]);
   const [staff, setStaff] = useState<User[]>(users || []);
-  const [assets, setAssets] = useState<any[]>(initialAssets || []);
+  const [assets, setAssets] = useState<{ id: number; name: string; type: string }[]>(initialAssets || []);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -49,7 +49,17 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
   
   // Tabs & Timeline
   const [activeTab, setActiveTab] = useState<'details' | 'timeline'>('details');
-  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<{
+    id: number;
+    action: string;
+    field?: string;
+    oldValue?: string;
+    newValue?: string;
+    createdAt: string;
+    user?: { name: string; username: string };
+  }[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [logsError, setLogsError] = useState(false);
 
   // Mentions
   const [showMentions, setShowMentions] = useState(false);
@@ -59,18 +69,31 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
 
   const fetchActivityLogs = useCallback(async () => {
     if (!ticket) return;
+    setIsLoadingLogs(true);
+    setLogsError(false);
     try {
       const res = await fetch(`/api/tickets/${ticket.id}/activity`);
-      if (res.ok) setActivityLogs(await res.json());
+      if (res.ok) {
+        setActivityLogs(await res.json());
+      } else {
+        setLogsError(true);
+      }
     } catch (e) {
       console.error(e);
+      setLogsError(true);
+    } finally {
+      setIsLoadingLogs(false);
     }
   }, [ticket]);
 
-  const getUserName = (id: string | null) => {
-    if (!id) return 'Unassigned';
-    const found = staff.find(u => String(u.id) === id);
-    return found ? (found.name || found.username) : `User #${id}`;
+  const getUserName = (value: string | null | undefined) => {
+    if (!value) return 'Unassigned';
+    // If it's a number, it's an old log; try to find it. Otherwise it's a username string.
+    if (!isNaN(Number(value))) {
+      const found = staff.find(u => String(u.id) === value);
+      return found ? (found.name || found.username) : `User #${value}`;
+    }
+    return value;
   };
 
   const fetchComments = useCallback(async () => {
@@ -225,6 +248,7 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
       if (res.ok) {
         setNewComment('');
         fetchComments();
+        fetchActivityLogs();
       }
     } catch (e) {
       console.error(e);
@@ -320,7 +344,7 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
             Details
           </button>
           <button 
-            onClick={() => setActiveTab('timeline')}
+            onClick={() => { setActiveTab('timeline'); fetchActivityLogs(); }}
             className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'timeline' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-white/40 hover:text-white/80'}`}
           >
             Timeline
@@ -340,7 +364,7 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
                 <div className="space-y-2">
                   <label className="text-xs text-white/40 font-bold">Status</label>
                   <select value={localStatus} onChange={e => setLocalStatus(e.target.value)} className="w-full bg-zinc-800 border-none rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 text-white">
-                    {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt.replace('_', ' ')}</option>)}
+                    {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt.replaceAll('_', ' ')}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -364,10 +388,10 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
 
                 <div className="space-y-2 col-span-2">
                   <label className="text-xs text-white/40 font-bold">Due Date</label>
-                  <input type="date" value={localDueDate} onChange={e => setLocalDueDate(e.target.value)} className="w-full bg-zinc-800 border-none rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 text-white [color-scheme:dark]" />
+                  <input type="date" value={localDueDate} onChange={e => setLocalDueDate(e.target.value)} className="w-full bg-zinc-800 border-none rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 text-white scheme-dark" />
                 </div>
 
-                <div className="space-y-3 col-span-2 pt-4 border-t border-white/5 mt-2 bg-indigo-950/20 p-4 -mx-4 border-y border-indigo-500/10">
+                <div className="space-y-3 col-span-2 pt-4 border-t border-white/5 mt-2 bg-indigo-950/20 p-4 -mx-4 border-b border-indigo-500/10">
                   <h4 className="text-xs text-indigo-400 font-bold uppercase tracking-widest flex items-center gap-2">
                     <Server className="w-4 h-4" /> Linked IT Asset
                   </h4>
@@ -437,52 +461,107 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
             </>
           ) : (
             <div className="space-y-6">
-              <h3 className="text-xs uppercase tracking-widest text-white/40 font-bold mb-4">Activity Timeline</h3>
-              <div className="relative border-l border-white/10 ml-3 space-y-6 pb-6">
-                {activityLogs.map((log) => {
-                  let Icon = Zap;
-                  let colorClass = 'text-indigo-400 bg-indigo-500/20';
-                  let message = '';
-
-                  switch (log.action) {
-                    case 'STATUS_CHANGE':
-                      Icon = CheckCircle;
-                      colorClass = 'text-green-400 bg-green-500/20';
-                      message = `changed status from ${log.oldValue?.replace('_', ' ') || 'none'} to ${log.newValue?.replace('_', ' ')}`;
-                      break;
-                    case 'PRIORITY_CHANGE':
-                      Icon = AlertCircle;
-                      colorClass = 'text-red-400 bg-red-500/20';
-                      message = `changed priority from ${log.oldValue || 'none'} to ${log.newValue}`;
-                      break;
-                    case 'ASSIGNMENT_CHANGE':
-                      Icon = UserIcon;
-                      colorClass = 'text-blue-400 bg-blue-500/20';
-                      message = `changed assignment from ${getUserName(log.oldValue)} to ${getUserName(log.newValue)}`;
-                      break;
-                    default:
-                      message = `updated field ${log.field}`;
-                  }
-
-                  return (
-                    <div key={log.id} className="relative pl-6">
-                      <div className={`absolute -left-3.5 top-0 w-7 h-7 rounded-full flex items-center justify-center border border-zinc-900 ${colorClass}`}>
-                        <Icon size={12} />
-                      </div>
-                      <div className="bg-white/5 border border-white/5 rounded-lg p-3">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-sm font-bold text-white/80">{log.user?.name || log.user?.username || 'System'}</span>
-                          <span className="text-[10px] text-white/40">{new Date(log.createdAt).toLocaleString()}</span>
-                        </div>
-                        <p className="text-xs text-white/60">{message}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {activityLogs.length === 0 && (
-                  <div className="pl-6 text-sm text-white/40 italic">No recent activity recorded.</div>
-                )}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs uppercase tracking-widest text-white/40 font-bold">Activity Timeline</h3>
+                <button 
+                  onClick={fetchActivityLogs}
+                  disabled={isLoadingLogs}
+                  className="p-1 hover:bg-white/10 rounded-md text-white/40 hover:text-white/80 transition-colors disabled:opacity-50"
+                  title="Refresh Timeline"
+                >
+                  <Clock className={`w-4 h-4 ${isLoadingLogs ? 'animate-spin' : ''}`} />
+                </button>
               </div>
+              
+              {isLoadingLogs ? (
+                <div className="flex flex-col items-center justify-center py-12 text-white/40">
+                  <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                  <p className="text-sm">Loading activity logs...</p>
+                </div>
+              ) : logsError ? (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+                  <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                  <p className="text-sm text-red-200">Failed to load activity logs.</p>
+                  <button onClick={fetchActivityLogs} className="mt-3 text-xs font-bold text-red-400 hover:text-red-300 underline">Try Again</button>
+                </div>
+              ) : (
+                <div className="relative border-l border-white/10 ml-3 space-y-6 pb-6">
+                  {activityLogs.map((log) => {
+                    let Icon = Zap;
+                    let colorClass = 'text-indigo-400 bg-indigo-500/20';
+                    let message = '';
+
+                    switch (log.action) {
+                      case 'STATUS_CHANGE':
+                        Icon = CheckCircle;
+                        colorClass = 'text-green-400 bg-green-500/20';
+                        message = `changed status from ${log.oldValue?.replaceAll('_', ' ') || 'none'} to ${log.newValue?.replaceAll('_', ' ')}`;
+                        break;
+                      case 'PRIORITY_CHANGE':
+                        Icon = AlertCircle;
+                        colorClass = 'text-red-400 bg-red-500/20';
+                        message = `changed priority from ${log.oldValue || 'none'} to ${log.newValue}`;
+                        break;
+                      case 'ASSIGNMENT_CHANGE':
+                        Icon = UserIcon;
+                        colorClass = 'text-blue-400 bg-blue-500/20';
+                        message = `changed assignment from ${getUserName(log.oldValue)} to ${getUserName(log.newValue)}`;
+                        break;
+                      case 'DUE_DATE_CHANGE':
+                        Icon = Clock;
+                        colorClass = 'text-yellow-400 bg-yellow-500/20';
+                        const oldDate = log.oldValue ? new Date(log.oldValue as string).toLocaleDateString() : 'none';
+                        const newDate = log.newValue ? new Date(log.newValue as string).toLocaleDateString() : 'none';
+                        message = `changed due date from ${oldDate} to ${newDate}`;
+                        break;
+                      case 'TITLE_CHANGE':
+                        message = `changed title from "${log.oldValue}" to "${log.newValue}"`;
+                        break;
+                      case 'DESCRIPTION_CHANGE':
+                        message = `updated the ticket description`;
+                        break;
+                      case 'TAGS_CHANGE':
+                        message = `updated tags to: ${log.newValue || 'none'}`;
+                        break;
+                      case 'CHECKLIST_ITEM_ADDED':
+                        message = `added checklist item: "${log.newValue}"`;
+                        break;
+                      case 'CHECKLIST_ITEM_COMPLETED':
+                        message = `completed: "${log.newValue}"`;
+                        break;
+                      case 'CHECKLIST_ITEM_UNCOMPLETED':
+                        message = `uncompleted: "${log.newValue}"`;
+                        break;
+                      case 'COMMENT_ADDED':
+                        message = `added a comment: "${log.newValue}"`;
+                        break;
+                      case 'TICKET_CREATED':
+                        message = `created the ticket: "${log.newValue}"`;
+                        break;
+                      default:
+                        message = `updated field ${log.field}`;
+                    }
+
+                    return (
+                      <div key={log.id} className="relative pl-6">
+                        <div className={`absolute -left-3.5 top-0 w-7 h-7 rounded-full flex items-center justify-center border border-zinc-900 ${colorClass}`}>
+                          <Icon size={12} />
+                        </div>
+                        <div className="bg-white/5 border border-white/5 rounded-lg p-3">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="text-sm font-bold text-white/80">{log.user?.name || log.user?.username || 'System'}</span>
+                            <span className="text-[10px] text-white/40">{new Date(log.createdAt).toLocaleString()}</span>
+                          </div>
+                          <p className="text-xs text-white/60">{message}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {activityLogs.length === 0 && (
+                    <div className="pl-6 text-sm text-white/40 italic">No recent activity recorded.</div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
