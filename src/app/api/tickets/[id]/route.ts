@@ -75,7 +75,14 @@ export const PATCH = withAuth(async (req: NextRequest, user: any, { params }: { 
       logs.push({ ticketId: parseInt(id), userId: dbUser?.id, action: 'TITLE_CHANGE', field: 'title', oldValue: currentTicket.title, newValue: title });
     }
     if (description !== undefined && description !== currentTicket.description) {
-      logs.push({ ticketId: parseInt(id), userId: dbUser?.id, action: 'DESCRIPTION_CHANGE', field: 'description', oldValue: 'Changed', newValue: 'Changed' });
+      logs.push({ 
+        ticketId: parseInt(id), 
+        userId: dbUser?.id, 
+        action: 'DESCRIPTION_CHANGE', 
+        field: 'description', 
+        oldValue: null, 
+        newValue: description ? description.substring(0, 120) + (description.length > 120 ? '...' : '') : null 
+      });
     }
     if (tags !== undefined && JSON.stringify(tags) !== JSON.stringify(currentTicket.tags)) {
       logs.push({ ticketId: parseInt(id), userId: dbUser?.id, action: 'TAGS_CHANGE', field: 'tags', oldValue: currentTicket.tags.join(', '), newValue: tags.join(', ') });

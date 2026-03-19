@@ -14,6 +14,7 @@ export const GET = withAuth(async (req: NextRequest, user: any) => {
     const pageSize = parseInt(searchParams.get('pageSize') || '50');
     const skip = (page - 1) * pageSize;
     const skipPagination = searchParams.get('all') === 'true';
+    const hasDueDate = searchParams.get('hasDueDate') === 'true';
 
     const [tickets, totalCount] = await Promise.all([
       prisma.ticket.findMany({
@@ -25,9 +26,12 @@ export const GET = withAuth(async (req: NextRequest, user: any) => {
           _count: { select: { comments: true, checklists: true } }
         },
         orderBy: { createdAt: 'desc' },
+        ...(hasDueDate ? { where: { dueDate: { not: null } } } : {}),
         ...(skipPagination ? {} : { skip, take: pageSize })
       }),
-      prisma.ticket.count()
+      prisma.ticket.count({
+        ...(hasDueDate ? { where: { dueDate: { not: null } } } : {})
+      })
     ]);
 
     return NextResponse.json({

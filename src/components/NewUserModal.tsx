@@ -15,7 +15,7 @@ const NewUserModal = ({ isOpen, onClose, onSuccess }: NewUserModalProps) => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    password: 'Welcome@123',
+    password: '',
     name: '',
     role: 'STAFF'
   });
@@ -113,14 +113,12 @@ const NewUserModal = ({ isOpen, onClose, onSuccess }: NewUserModalProps) => {
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-white/40 ml-1">Initial Password</label>
             <input 
-              required
               type="text" 
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
-              placeholder="••••••••"
+              placeholder="Leave blank to use default (Welcome@123)"
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm focus:border-indigo-500/50 outline-none text-indigo-400 font-medium"
             />
-            <p className="text-[9px] text-white/20 ml-1 italic">Default is Welcome@123</p>
           </div>
 
           <button 

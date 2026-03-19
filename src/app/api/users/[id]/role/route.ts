@@ -25,7 +25,11 @@ export const PUT = withAuth(async (req: NextRequest, user: any, { params }: { pa
       data: { role }
     });
     
-    return NextResponse.json({ id: updated.id, email: updated.email, role: updated.role });
+    const response = NextResponse.json({ id: updated.id, email: updated.email, role: updated.role });
+    if (parseInt(id) === user.id) {
+      response.cookies.set('session', '', { maxAge: 0, path: '/' });
+    }
+    return response;
   } catch (err: any) {
     console.error('Role update error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

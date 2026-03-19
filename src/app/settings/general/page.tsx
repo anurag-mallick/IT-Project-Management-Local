@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function GeneralSettings() {
   const { user } = useAuth();
-  const workspaceUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'it-project-management.vercel.app';
+  const workspaceUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'localhost:3000';
 
   return (
     <div className="max-w-2xl">

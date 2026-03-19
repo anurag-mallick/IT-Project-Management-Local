@@ -35,7 +35,7 @@ const CalendarView = ({ users, assets }: CalendarViewProps) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/tickets?all=true');
+      const res = await fetch('/api/tickets?all=true&hasDueDate=true');
       if (!res.ok) throw new Error('Failed to fetch tickets');
       const data = await res.json();
       setTickets(data.tickets || []);

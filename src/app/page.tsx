@@ -69,6 +69,7 @@ const Dashboard = () => {
           }}
           isMobileOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
+          refreshKey={savedViewsRefreshKey}
         />
 
         {/* Mobile Overlay */}

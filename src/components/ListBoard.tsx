@@ -5,6 +5,7 @@ import { ChevronRight, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Ticket, User } from '@/types';
 import TicketDetailModal from '@/components/TicketDetailModal';
+import { useDensity } from '@/context/DensityContext';
 
 const priorityColor: Record<string, string> = {
   P0: 'text-red-400',
@@ -33,6 +34,7 @@ interface ListBoardProps {
 }
 
 const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
+  const { density } = useDensity();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, totalCount: 0 });
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -72,11 +74,27 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
     fetchTickets(currentPageRef.current); 
     const interval = setInterval(() => fetchTickets(currentPageRef.current), 15000);
     return () => clearInterval(interval);
-  }, []); // run once only
+  }, []);
 
   useEffect(() => {
     if (searchQuery !== undefined) fetchTickets(1);
   }, [searchQuery]);
+
+  const filteredTickets = tickets.filter((t: Ticket) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const title = t.title || "";
+    const description = t.description || "";
+    const requester = t.requesterName || t.authorName || "";
+    const id = t.id?.toString() || "";
+
+    return (
+      title.toLowerCase().includes(q) ||
+      description.toLowerCase().includes(q) ||
+      requester.toLowerCase().includes(q) ||
+      id.includes(q)
+    );
+  });
 
   const toggleSelectAll = () => {
     if (selectedTicketIds.size === filteredTickets.length) {
@@ -103,7 +121,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
     setSavingBulk(true);
     try {
-      const data: Record<string, string | number | boolean | undefined> = {};
+      const data: Record<string, any> = {};
       if (actionType === 'status') data.status = value;
       if (actionType === 'priority') data.priority = value;
       if (actionType === 'assignee') data.assignedToId = value ? parseInt(value) : undefined;
@@ -135,27 +153,16 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
   const parentRef = React.useRef<HTMLDivElement>(null);
 
-  const filteredTickets = tickets.filter((t: Ticket) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    // Safety check for all fields used in search
-    const title = t.title || "";
-    const description = t.description || "";
-    const requester = t.requesterName || t.authorName || "";
-    const id = t.id?.toString() || "";
-
-    return (
-      title.toLowerCase().includes(q) ||
-      description.toLowerCase().includes(q) ||
-      requester.toLowerCase().includes(q) ||
-      id.includes(q)
-    );
-  });
+  const rowHeights = {
+    compact: 48,
+    comfortable: 56,
+    spacious: 64
+  };
 
   const rowVirtualizer = useVirtualizer({
     count: filteredTickets.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 64,
+    estimateSize: () => rowHeights[density],
     overscan: 5,
   });
 
@@ -166,7 +173,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
   );
 
   if (error) return (
-    <div className="glass-card p-6 flex items-center gap-3 text-red-400">
+    <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl flex items-center gap-3 text-red-400">
       <AlertCircle size={18} />
       <span className="text-sm">{error}</span>
       <button onClick={() => fetchTickets(1)} className="ml-auto text-indigo-400 hover:underline text-xs font-bold">Retry</button>
@@ -175,31 +182,29 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
   return (
     <>
-      <div className="glass-card overflow-hidden flex flex-col h-[700px] relative">
+      <div className="bg-zinc-950/20 border border-white/5 rounded-2xl overflow-hidden flex flex-col h-[700px] relative">
         {/* Table Header */}
-        <div className="flex border-b border-white/5 bg-white/5 text-[10px] uppercase tracking-widest text-white/40 font-bold items-center">
-          <div className="w-12 px-4 py-4 shrink-0 flex items-center justify-center">
+        <div className="grid grid-cols-[auto_1fr_120px_100px_120px_80px_40px] gap-0 px-4 py-3 border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-white/25 items-center">
+          <div className="w-10">
             <input 
               type="checkbox" 
               checked={selectedTicketIds.size === filteredTickets.length && filteredTickets.length > 0}
               onChange={toggleSelectAll}
-              className="rounded border-white/10 bg-black/20 text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+              className="rounded border-white/10 bg-black/20 text-indigo-500 focus:ring-0 cursor-pointer w-4 h-4"
             />
           </div>
-          <div className="w-16 px-4 py-4 shrink-0">ID</div>
-          <div className="flex-1 px-6 py-4 min-w-0">Title</div>
-          <div className="w-32 px-6 py-4 shrink-0">Status</div>
-          <div className="w-32 px-6 py-4 shrink-0">Priority</div>
-          <div className="w-40 px-6 py-4 shrink-0">Requester</div>
-          <div className="w-32 px-6 py-4 shrink-0">Created</div>
-          <div className="w-12 px-6 py-4 shrink-0"></div>
+          <div>Title</div>
+          <div className="px-2">Assignee</div>
+          <div className="px-2">Status</div>
+          <div className="px-2">Priority</div>
+          <div className="px-2">Created</div>
+          <div></div>
         </div>
 
         {/* virtualized Scroll Container */}
         <div 
           ref={parentRef} 
-          className="flex-1 overflow-auto scrollbar-hide"
-          style={{ contain: 'strict' }}
+          className="flex-1 overflow-auto custom-scrollbar"
         >
           {filteredTickets.length === 0 ? (
             <div className="flex items-center justify-center p-24 text-white/20 text-sm">No tickets found</div>
@@ -213,10 +218,17 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow: any) => {
                 const ticket = filteredTickets[virtualRow.index];
+                const priorityBorder = {
+                  P0: 'border-l-red-500',
+                  P1: 'border-l-orange-500',
+                  P2: 'border-l-indigo-500',
+                  P3: 'border-l-zinc-600',
+                }[ticket.priority as string] || 'border-l-zinc-700';
+
                 return (
                   <div
                     key={virtualRow.key}
-                    className="absolute top-0 left-0 w-full flex items-center hover:bg-white/5 transition-colors group cursor-pointer border-b border-white/5"
+                    className={`absolute top-0 left-0 w-full grid grid-cols-[auto_1fr_120px_100px_120px_80px_40px] items-center hover:bg-white/[0.03] transition-colors group cursor-pointer border-b border-white/5 border-l-4 ${priorityBorder}`}
                     style={{
                       height: `${virtualRow.size}px`,
                       top: 0,
@@ -225,38 +237,45 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
                     }}
                     onClick={() => setSelectedTicket(ticket)}
                   >
-                    <div className="w-12 px-4 py-4 h-full flex items-center justify-center shrink-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                    <div className="w-10 px-0 h-full flex items-center justify-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                        <input 
                         type="checkbox" 
                         checked={selectedTicketIds.has(ticket.id)}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => toggleSelectTicket(ticket.id, e as unknown as React.MouseEvent)}
-                        className="rounded border-white/10 bg-black/20 text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+                        className="rounded border-white/10 bg-black/20 text-indigo-500 focus:ring-0 cursor-pointer w-4 h-4"
                       />
                     </div>
-                    <div className="w-16 px-4 py-4 h-full flex items-center font-mono text-xs text-white/30 shrink-0">
-                      #{ticket.id}
+                    <div className="px-0 h-full flex items-center text-sm font-medium overflow-hidden">
+                      <span className="truncate text-white/90">
+                        <span className="text-[10px] text-white/20 font-mono mr-2">#{ticket.id}</span>
+                        {ticket.title}
+                      </span>
                     </div>
-                    <div className="flex-1 px-6 py-4 h-full flex items-center text-sm font-medium overflow-hidden">
-                      <span className="truncate">{ticket.title}</span>
+                    <div className="px-2 h-full flex items-center overflow-hidden">
+                      {ticket.assignedTo ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 border border-white/5 flex items-center justify-center text-[10px] font-bold text-white/60">
+                            {(ticket.assignedTo.name || ticket.assignedTo.username || '?')[0].toUpperCase()}
+                          </div>
+                          <span className="text-[11px] text-white/40 truncate hidden lg:block">{ticket.assignedTo.name || ticket.assignedTo.username}</span>
+                        </div>
+                      ) : <span className="text-[11px] text-white/10">Unassigned</span>}
                     </div>
-                    <div className="w-32 px-6 py-4 h-full flex items-center shrink-0">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tight ${statusColors[ticket.status] ?? 'bg-white/5 text-white/50'}`}>
+                    <div className="px-2 h-full flex items-center">
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${statusColors[ticket.status] ?? 'bg-white/5 text-white/50'}`}>
                         {ticket.status.replace('_', ' ')}
                       </span>
                     </div>
-                    <div className="w-32 px-6 py-4 h-full flex items-center shrink-0">
+                    <div className="px-2 h-full flex items-center">
                       <span className={`text-[10px] font-bold ${priorityColor[ticket.priority] ?? 'text-white/40'}`}>
-                        {PRIORITY_LABELS[ticket.priority] ?? ticket.priority}
+                        {ticket.priority}
                       </span>
                     </div>
-                    <div className="w-40 px-6 py-4 h-full flex items-center text-xs text-white/40 shrink-0">
-                      <span className="truncate">{ticket.requesterName || ticket.authorName || '—'}</span>
+                    <div className="px-2 h-full flex items-center text-[10px] text-white/30 font-mono">
+                      {new Date(ticket.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                     </div>
-                    <div className="w-32 px-6 py-4 h-full flex items-center text-xs text-white/30 shrink-0">
-                      {new Date(ticket.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="w-12 px-6 py-4 h-full flex items-center justify-end shrink-0">
-                      <ChevronRight size={16} className="text-white/20 group-hover:text-white/60 transition-colors" />
+                    <div className="h-full flex items-center justify-center">
+                      <ChevronRight size={14} className="text-white/10 group-hover:text-white/40" />
                     </div>
                   </div>
                 );
@@ -325,30 +344,32 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
         )}
       </div>
 
-      <div className="flex items-center justify-between mt-6 px-2">
-        <div className="text-xs text-white/40 font-medium">
-          Showing <span className="text-white/70">{tickets.length}</span> of <span className="text-white/70">{pagination.totalCount}</span> tickets
-        </div>
-        <div className="flex items-center gap-2">
-          <button 
-            disabled={pagination.page <= 1}
-            onClick={() => fetchTickets(pagination.page - 1)}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 rounded-xl border border-white/5 text-xs font-bold transition-all"
-          >
-            Prev
-          </button>
-          <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold px-4">
-            Page {pagination.page} of {pagination.totalPages}
+      {!searchQuery && (
+        <div className="flex items-center justify-between mt-6 px-2">
+          <div className="text-xs text-white/40 font-medium">
+            Showing <span className="text-white/70">{tickets.length}</span> of <span className="text-white/70">{pagination.totalCount}</span> tickets
           </div>
-          <button 
-            disabled={pagination.page >= pagination.totalPages}
-            onClick={() => fetchTickets(pagination.page + 1)}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 rounded-xl border border-white/5 text-xs font-bold transition-all"
-          >
-            Next
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              disabled={pagination.page <= 1}
+              onClick={() => fetchTickets(pagination.page - 1)}
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 rounded-xl border border-white/5 text-xs font-bold transition-all"
+            >
+              Prev
+            </button>
+            <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold px-4">
+              Page {pagination.page} of {pagination.totalPages}
+            </div>
+            <button 
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() => fetchTickets(pagination.page + 1)}
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-white/5 rounded-xl border border-white/5 text-xs font-bold transition-all"
+            >
+              Next
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <TicketDetailModal
         isOpen={!!selectedTicket}

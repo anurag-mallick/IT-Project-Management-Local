@@ -17,6 +17,7 @@ export default function AssetsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAsset, setExpandedAsset] = useState<number | null>(null);
+  const [error, setError] = useState('');
   
   // Form State
   const [formData, setFormData] = useState({
@@ -49,6 +50,7 @@ export default function AssetsPage() {
       if (res.ok) setAssets(data);
     } catch (error) {
       console.error("Failed to load assets", error);
+      setError('Failed to load assets. Please refresh.');
     } finally {
       setIsLoading(false);
     }
@@ -150,6 +152,7 @@ export default function AssetsPage() {
         </div>
 
         {/* Search */}
+        {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">{error}</div>}
         <div className="bg-slate-800/80 border border-slate-700 p-2 rounded-2xl flex items-center gap-3 mb-6 relative z-10 w-full max-w-md">
            <Search className="w-5 h-5 text-slate-400 ml-2" />
            <input
@@ -242,7 +245,18 @@ export default function AssetsPage() {
                         <button className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
                           <Edit2 size={12} /> Edit
                         </button>
-                        <button className="p-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 rounded-lg transition-colors">
+                        <button 
+                          className="p-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 rounded-lg transition-colors"
+                          onClick={async () => {
+                            if (!window.confirm('Are you sure you want to delete this asset?')) return;
+                            try {
+                              const res = await fetch(`/api/assets/${asset.id}`, { method: 'DELETE' });
+                              if (res.ok) fetchAssets();
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                        >
                           <Trash2 size={12} />
                         </button>
                       </div>
