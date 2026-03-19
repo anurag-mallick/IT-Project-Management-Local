@@ -21,6 +21,7 @@ const Dashboard = () => {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [savedViewsRefreshKey, setSavedViewsRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [staff, setStaff] = useState<any[]>([]);
@@ -38,7 +39,7 @@ const Dashboard = () => {
     fetch('/api/assets').then(res => res.ok && res.json()).then(data => { if(data) setAssets(data) }).catch(console.error);
   }, []);
 
-  const handleTicketCreated = () => setRefreshKey(k => k + 1);
+  const handleTicketCreated = () => setRefreshKey((k: number) => k + 1);
 
   useKeyboardShortcuts({
     'n': () => setIsModalOpen(true),
@@ -99,7 +100,10 @@ const Dashboard = () => {
                       headers: {'Content-Type': 'application/json'},
                       body: JSON.stringify({ name, query })
                     });
-                    if (res.ok) alert("View saved successfully!");
+                    if (res.ok) {
+                      alert("View saved successfully!");
+                      setSavedViewsRefreshKey((k: number) => k + 1);
+                    }
                     else alert("Failed to save view.");
                   } catch (e) {
                     console.error(e);

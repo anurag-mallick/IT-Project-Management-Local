@@ -1,12 +1,12 @@
 "use client";
 import React from 'react';
-import { Settings, Server, ChevronRight, Star, LayoutGrid, List, BarChart, Calendar, Search, Menu } from 'lucide-react';
+import { Settings, Server, ChevronRight, Star, LayoutGrid, List, BarChart, Calendar, Search, Menu, Shield } from 'lucide-react';
 import Link from 'next/link';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 
 interface BreadcrumbsProps {
   activeView: string;
-  setActiveView: (view: 'kanban' | 'list' | 'reports' | 'calendar' | 'intelligence') => void;
+  setActiveView: (view: 'kanban' | 'list' | 'reports' | 'calendar' | 'intelligence' | 'sla') => void;
   searchQuery?: string;
   onSearchChange?: (val: string) => void;
   onMenuToggle?: () => void;
@@ -48,7 +48,7 @@ const NavHeader = ({ activeView, setActiveView, searchQuery, onSearchChange, onM
               type="text"
               placeholder="Search across all tickets..."
               value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-1.5 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all font-medium"
             />
           </div>
@@ -85,6 +85,13 @@ const NavHeader = ({ activeView, setActiveView, searchQuery, onSearchChange, onM
           >
             <Calendar size={12} />
             Calendar
+          </button>
+          <button 
+            onClick={() => setActiveView('sla')}
+            className={`flex items-center gap-2 px-3 py-1 rounded text-xs font-medium transition-all ${activeView === 'sla' ? 'bg-zinc-800 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+          >
+            <Shield size={12} className="text-blue-400" />
+            SLA
           </button>
         </div>
 

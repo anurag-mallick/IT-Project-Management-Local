@@ -49,7 +49,7 @@ const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
   return <span className="font-mono">{timeLeft}</span>;
 };
 
-const TicketCard = ({ ticket, type }: { ticket: SLATicket, type: 'breached' | 'warning' | 'safe' }) => {
+const TicketCard = ({ ticket, type }: { ticket: SLATicket, type: 'breached' | 'warning' | 'safe', key?: any }) => {
   const styles = {
     breached: 'bg-red-500/10 border-red-500/20 text-red-500',
     warning: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500',
@@ -58,7 +58,7 @@ const TicketCard = ({ ticket, type }: { ticket: SLATicket, type: 'breached' | 'w
 
   return (
     <div className={`p-4 rounded-xl border ${styles[type]} mb-3 transition-all hover:scale-[1.02] cursor-pointer`}
-         onClick={() => window.location.href = `/?ticketId=${ticket.id}`}>
+         onClick={() => window.location.href = '/'}>
       <div className="flex justify-between items-start mb-2">
          <span className="text-xs font-bold uppercase tracking-widest opacity-80">{ticket.priority}</span>
          <span className="text-xs opacity-60">#{ticket.id}</span>
@@ -126,7 +126,7 @@ export default function SLADashboard() {
                {data.breached.length === 0 ? (
                  <p className="text-sm text-white/40 italic text-center mt-8">No breached tickets.</p>
                ) : (
-                 data.breached.map(t => <TicketCard key={t.id} ticket={t} type="breached" />)
+                 data.breached.map((t: SLATicket) => <TicketCard key={t.id} ticket={t} type="breached" />)
                )}
             </div>
          </div>
@@ -140,7 +140,7 @@ export default function SLADashboard() {
                {data.under1h.length === 0 ? (
                  <p className="text-sm text-white/40 italic text-center mt-8">No tickets at critical risk.</p>
                ) : (
-                 data.under1h.map(t => <TicketCard key={t.id} ticket={t} type="warning" />)
+                 data.under1h.map((t: SLATicket) => <TicketCard key={t.id} ticket={t} type="warning" />)
                )}
             </div>
          </div>
@@ -154,7 +154,7 @@ export default function SLADashboard() {
                {data.under4h.length === 0 ? (
                  <p className="text-sm text-white/40 italic text-center mt-8">No tickets at high risk.</p>
                ) : (
-                 data.under4h.map(t => <TicketCard key={t.id} ticket={t} type="warning" />)
+                 data.under4h.map((t: SLATicket) => <TicketCard key={t.id} ticket={t} type="warning" />)
                )}
             </div>
          </div>
@@ -165,8 +165,12 @@ export default function SLADashboard() {
                <ShieldAlert size={16} /> &lt; 24h & Safe ({data.under24h.length + data.safe.length})
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-               {data.under24h.map(t => <TicketCard key={t.id} ticket={t} type="safe" />)}
-               {data.safe.map(t => <TicketCard key={t.id} ticket={t} type="safe" />)}
+                {data.under24h.map((t: SLATicket) => <TicketCard key={t.id} ticket={t} type="safe" />)}
+                  {/* Assuming 'safeTickets' is meant to be 'data.safe' based on context,
+                      and the instruction to ensure 'key' is on the top-level element in the map. */}
+                  {data.safe.map((t: SLATicket) => (
+                    <TicketCard key={t.id} ticket={t} type="safe" />
+                  ))}
                {data.under24h.length === 0 && data.safe.length === 0 && (
                  <p className="text-sm text-white/40 italic text-center mt-8">No tickets in safe window.</p>
                )}

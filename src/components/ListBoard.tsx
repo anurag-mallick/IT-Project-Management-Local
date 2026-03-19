@@ -29,6 +29,7 @@ interface ListBoardProps {
   searchQuery?: string;
   users?: User[];
   assets?: { id: number; name: string; type: string }[];
+  key?: any;
 }
 
 const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
@@ -51,7 +52,10 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tickets?page=${page}&pageSize=20`);
+      const url = searchQuery
+        ? `/api/tickets?all=true`
+        : `/api/tickets?page=${page}&pageSize=20`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch tickets');
       const data = await res.json();
       setTickets(data.tickets);
@@ -70,11 +74,15 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
     return () => clearInterval(interval);
   }, []); // run once only
 
+  useEffect(() => {
+    if (searchQuery !== undefined) fetchTickets(1);
+  }, [searchQuery]);
+
   const toggleSelectAll = () => {
     if (selectedTicketIds.size === filteredTickets.length) {
       setSelectedTicketIds(new Set());
     } else {
-      setSelectedTicketIds(new Set(filteredTickets.map(t => t.id)));
+      setSelectedTicketIds(new Set(filteredTickets.map((t: Ticket) => t.id)));
     }
   };
 
@@ -127,7 +135,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
   const parentRef = React.useRef<HTMLDivElement>(null);
 
-  const filteredTickets = tickets.filter((t) => {
+  const filteredTickets = tickets.filter((t: Ticket) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     // Safety check for all fields used in search
@@ -203,7 +211,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
                 position: 'relative',
               }}
             >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              {rowVirtualizer.getVirtualItems().map((virtualRow: any) => {
                 const ticket = filteredTickets[virtualRow.index];
                 return (
                   <div
@@ -217,11 +225,11 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
                     }}
                     onClick={() => setSelectedTicket(ticket)}
                   >
-                    <div className="w-12 px-4 py-4 h-full flex items-center justify-center shrink-0" onClick={e => e.stopPropagation()}>
+                    <div className="w-12 px-4 py-4 h-full flex items-center justify-center shrink-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                        <input 
                         type="checkbox" 
                         checked={selectedTicketIds.has(ticket.id)}
-                        onChange={(e) => toggleSelectTicket(ticket.id, e as unknown as React.MouseEvent)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => toggleSelectTicket(ticket.id, e as unknown as React.MouseEvent)}
                         className="rounded border-white/10 bg-black/20 text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                       />
                     </div>
@@ -268,7 +276,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
             <div className="flex items-center gap-2">
                <select 
                   className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
-                  onChange={(e) => e.target.value && handleBulkAction('status', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => e.target.value && handleBulkAction('status', e.target.value)}
                   value=""
                >
                  <option value="" disabled>Set Status...</option>
@@ -281,7 +289,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
                <select 
                   className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
-                  onChange={(e) => e.target.value && handleBulkAction('priority', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => e.target.value && handleBulkAction('priority', e.target.value)}
                   value=""
                >
                  <option value="" disabled>Set Priority...</option>
@@ -293,7 +301,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
                <select 
                   className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
-                  onChange={(e) => e.target.value && handleBulkAction('assignee', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => e.target.value && handleBulkAction('assignee', e.target.value)}
                   value=""
                >
                  <option value="" disabled>Assign To...</option>

@@ -29,6 +29,7 @@ const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
 ];
 
 const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => {
+  const [selectedTemplateChecklists, setSelectedTemplateChecklists] = useState<{title: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [staff, setStaff] = useState<User[]>([]);
@@ -59,6 +60,7 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
     if (isOpen) {
       setError('');
       setAttachment(null);
+      setSelectedTemplateChecklists([]);
       setFormData({ title: '', description: '', priority: 'P2', status: 'TODO', assignedToId: '', tags: '', dueDate: '', assetId: '' });
       
       // Fetch staff
@@ -83,9 +85,13 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
 
   const handleTemplateSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const tId = parseInt(e.target.value);
-    if (!tId) return;
+    if (!tId) {
+      setSelectedTemplateChecklists([]);
+      return;
+    }
     const t = templates.find(x => x.id === tId);
     if (t) {
+      setSelectedTemplateChecklists(t.checklists || []);
       setFormData(prev => ({
         ...prev,
         title: t.name,
@@ -135,6 +141,21 @@ const NewTicketModal = ({ isOpen, onClose, onSuccess }: NewTicketModalProps) => 
       if (res.ok) {
         const newTicket = await res.json();
         
+        // Apply template checklists
+        if (selectedTemplateChecklists.length > 0) {
+          try {
+            await Promise.all(selectedTemplateChecklists.map(item => 
+              fetch(`/api/tickets/${newTicket.id}/checklists`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: item.title })
+              })
+            ));
+          } catch (checklistErr) {
+            console.error("Failed to apply template checklists", checklistErr);
+          }
+        }
+
         // Upload attachment if present
         if (attachment) {
           try {

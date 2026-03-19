@@ -68,15 +68,15 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
 
   useEffect(() => {
     if (selectedTicket) {
-      const updated = tickets.find(t => t.id === selectedTicket.id);
+      const updated = tickets.find((t: Ticket) => t.id === selectedTicket.id);
       if (updated) setSelectedTicket(updated);
     }
   }, [tickets, selectedTicket]);
 
   const moveTicket = async (ticketId: number, newStatus: TicketStatus) => {
     const originalTickets = [...tickets];
-    setTickets((prev) =>
-      prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t)),
+    setTickets((prev: Ticket[]) =>
+      prev.map((t: Ticket) => (t.id === ticketId ? { ...t, status: newStatus } : t)),
     );
 
     try {
@@ -106,7 +106,7 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
     moveTicket(ticketId, newStatus as TicketStatus);
   };
 
-  const filteredTickets = tickets.filter((t) => {
+  const filteredTickets = tickets.filter((t: Ticket) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -120,7 +120,7 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="flex h-full w-full overflow-x-auto gap-4 p-4 pb-8">
-        {columns.map((col) => (
+        {columns.map((col: any) => (
           <div
             key={col.id}
             className="min-w-[320px] w-[320px] shrink-0 flex flex-col glass-card custom-scrollbar"
@@ -128,12 +128,12 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
             <div className="p-4 border-b border-white/5 flex items-center justify-between">
               <h3 className="font-bold text-sm">{col.title}</h3>
               <span className="bg-white/10 text-xs px-2 py-1 rounded-md">
-                {filteredTickets.filter((t) => t.status === col.title).length}
+                {filteredTickets.filter((t: Ticket) => t.status === col.title).length}
               </span>
             </div>
 
             <Droppable droppableId={col.title}>
-              {(provided) => (
+              {(provided: any) => (
                 <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
@@ -143,12 +143,16 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
                     <div className="flex justify-center p-4">
                       <Loader2 className="w-5 h-5 animate-spin text-white/20" />
                     </div>
+                  ) : filteredTickets.filter((t: Ticket) => t.status === col.title).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center text-white/10 border-2 border-dashed border-white/5 rounded-2xl">
+                      <span className="text-[10px] uppercase font-black tracking-widest">Column Empty</span>
+                    </div>
                   ) : (
                     filteredTickets
-                      .filter((t) => t.status === col.title)
-                      .map((ticket, index) => (
+                      .filter((t: Ticket) => t.status === col.title)
+                      .map((ticket: Ticket, index: number) => (
                         <Draggable key={ticket.id} draggableId={ticket.id.toString()} index={index}>
-                          {(provided, snapshot) => (
+                          {(provided: any, snapshot: any) => (
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}

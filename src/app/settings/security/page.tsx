@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Shield, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function SecuritySettings() {
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -31,13 +32,18 @@ export default function SecuritySettings() {
       const res = await fetch('/api/users/update-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user?.email, password: newPassword }),
+        body: JSON.stringify({ 
+          email: user?.email, 
+          password: newPassword,
+          currentPassword 
+        }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update password');
 
       setSuccess(true);
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
@@ -56,6 +62,21 @@ export default function SecuritySettings() {
 
       <div className="bg-white/5 border border-white/10 p-6 rounded-2xl max-w-md">
         <form onSubmit={handleUpdatePassword} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-widest">Current Password</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={16} />
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500/50 transition-all"
+                placeholder="Current password"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label className="text-xs font-semibold text-white/60 uppercase tracking-widest">New Password</label>
             <div className="relative">

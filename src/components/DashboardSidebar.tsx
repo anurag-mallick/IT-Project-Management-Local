@@ -5,7 +5,7 @@ import {
   LayoutGrid, List, BarChart, Users, LogOut,
   ChevronDown, ChevronRight, Shield, Database, 
   Plus, ExternalLink, Calendar, Github, Linkedin, Cpu,
-  Settings as SettingsIcon, X
+  Settings as SettingsIcon, X, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,14 +17,15 @@ interface SavedView {
 
 interface SidebarProps {
   activeView: string;
-  setActiveView: (view: 'kanban' | 'list' | 'reports' | 'calendar' | 'intelligence') => void;
+  setActiveView: (view: 'kanban' | 'list' | 'reports' | 'calendar' | 'intelligence' | 'sla') => void;
   onNewTicket: () => void;
   onApplyView?: (query: any) => void;
   isMobileOpen?: boolean;
   onClose?: () => void;
+  refreshKey?: number;
 }
 
-const Sidebar = ({ activeView, setActiveView, onNewTicket, onApplyView, isMobileOpen, onClose }: SidebarProps) => {
+const Sidebar = ({ activeView, setActiveView, onNewTicket, onApplyView, isMobileOpen, onClose, refreshKey }: SidebarProps) => {
   const { user, signOut } = useAuth();
   const [spacesOpen, setSpacesOpen] = useState(true);
   const [viewsOpen, setViewsOpen] = useState(true);
@@ -34,7 +35,20 @@ const Sidebar = ({ activeView, setActiveView, onNewTicket, onApplyView, isMobile
     fetch('/api/views').then(res => res.ok && res.json()).then(data => {
       if (Array.isArray(data)) setSavedViews(data);
     }).catch(console.error);
-  }, []);
+  }, [refreshKey]);
+
+  const deleteView = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Delete this saved view?")) return;
+    try {
+      const res = await fetch(`/api/views/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSavedViews((prev: SavedView[]) => prev.filter((v: SavedView) => v.id !== id));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const navItems = [
     { id: 'intelligence', label: 'Dashboard', icon: BarChart },
@@ -195,16 +209,21 @@ const Sidebar = ({ activeView, setActiveView, onNewTicket, onApplyView, isMobile
               {savedViews.length === 0 ? (
                 <div className="px-3 py-1.5 text-xs text-white/40 italic">No saved filters</div>
               ) : (
-                savedViews.map(view => (
-                  <button
+                savedViews.map((view: SavedView) => (
+                  <div
                     key={view.id}
                     onClick={() => {
                       if (onApplyView) onApplyView(view.query);
                     }}
-                    className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm transition-colors text-white/40 hover:text-white hover:bg-white/5"
+                    className="group w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm transition-colors text-white/40 hover:text-white hover:bg-white/5 cursor-pointer"
                   >
-                    <span>{view.name}</span>
-                  </button>
+                    <span className="truncate">{view.name}</span>
+                    <Trash2 
+                      size={12} 
+                      className="opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-red-400 transition-all shrink-0"
+                      onClick={(e: React.MouseEvent) => deleteView(view.id, e)}
+                    />
+                  </div>
                 ))
               )}
             </motion.div>
