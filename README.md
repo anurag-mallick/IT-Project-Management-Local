@@ -38,10 +38,10 @@ The installer will:
 **Requirements:**
 - Windows 10/11 or Windows Server 2019+
 - PowerShell 5.1+ (run as Administrator)
-- Git ([download](https://git-scm.com/download/win))
-- Node.js 18+ ([download](https://nodejs.org))
+- Git (installed automatically if missing)
+- Node.js 18+ (installed automatically if missing)
 - For Docker mode: Docker Desktop ([download](https://www.docker.com/products/docker-desktop))
-- For Native mode: Nothing extra — PostgreSQL is installed automatically
+- For Native mode: PostgreSQL 16 (installed automatically)
 
 ## Uninstall
 

@@ -13,21 +13,44 @@ if (-not $isAdmin) {
 try {
     git --version | Out-Null
 } catch {
-    Write-Host "Git is not installed. Please download and install Git from https://git-scm.com/download/win and try again." -ForegroundColor Red
-    exit 1
+    Write-Host "Git is not installed. Attempting to install..." -ForegroundColor Yellow
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements
+    } else {
+        Write-Host "Downloading Git installer..."
+        $gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.44.0.windows.1/Git-2.44.0-64-bit.exe"
+        $gitInstaller = "$env:TEMP\git-setup.exe"
+        Invoke-WebRequest -Uri $gitUrl -OutFile $gitInstaller -UseBasicParsing
+        Start-Process -FilePath $gitInstaller -ArgumentList "/VERYSILENT /NORESTART" -Wait
+    }
+    $env:PATH += ";C:\Program Files\Git\bin;C:\Program Files\Git\cmd"
 }
 
 # Check Node.js 18+
+$installNode = $false
 try {
     $nodeVersion = node --version
     $majorVersion = [int]($nodeVersion -replace 'v', '' -replace '\..*', '')
     if ($majorVersion -lt 18) {
-        Write-Host "Node.js 18+ is required. Found $nodeVersion. Please download from https://nodejs.org" -ForegroundColor Red
-        exit 1
+        Write-Host "Node.js 18+ is required. Found $nodeVersion. Updating..." -ForegroundColor Yellow
+        $installNode = $true
     }
 } catch {
-    Write-Host "Node.js is not installed. Please download from https://nodejs.org and try again." -ForegroundColor Red
-    exit 1
+    Write-Host "Node.js is not installed. Attempting to install..." -ForegroundColor Yellow
+    $installNode = $true
+}
+
+if ($installNode) {
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget install --id OpenJS.NodeJS.LTS -e --source winget --accept-package-agreements --accept-source-agreements
+    } else {
+        Write-Host "Downloading Node.js installer..."
+        $nodeUrl = "https://nodejs.org/dist/v20.11.1/node-v20.11.1-x64.msi"
+        $nodeInstaller = "$env:TEMP\node-setup.msi"
+        Invoke-WebRequest -Uri $nodeUrl -OutFile $nodeInstaller -UseBasicParsing
+        Start-Process -FilePath msiexec.exe -ArgumentList "/i $nodeInstaller /quiet /norestart" -Wait
+    }
+    $env:PATH += ";C:\Program Files\nodejs"
 }
 
 # Step B: Ask the user which installation mode they want
