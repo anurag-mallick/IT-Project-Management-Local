@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import NavHeader from "@/components/NavHeader";
 import { 
   Laptop, Monitor, Server, Plus, Search, Edit2, Trash2, Box, 
-  MapPin, ShieldCheck, ChevronDown, ChevronUp, ArrowLeft
+  MapPin, ShieldCheck, ChevronDown, ChevronUp, ArrowLeft, AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import { Asset, User } from "@/types";
@@ -18,6 +18,7 @@ export default function AssetsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAsset, setExpandedAsset] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -241,25 +242,46 @@ export default function AssetsPage() {
                     <div className="space-y-4">
                       <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-2">Actions & Notes</h4>
                       <p className="text-sm text-slate-400 italic line-clamp-3">{asset.description || 'No additional notes provided for this asset.'}</p>
-                      <div className="flex gap-2">
-                        <button className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
-                          <Edit2 size={12} /> Edit
-                        </button>
-                        <button 
-                          className="p-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 rounded-lg transition-colors"
-                          onClick={async () => {
-                            if (!window.confirm('Are you sure you want to delete this asset?')) return;
-                            try {
-                              const res = await fetch(`/api/assets/${asset.id}`, { method: 'DELETE' });
-                              if (res.ok) fetchAssets();
-                            } catch (e) {
-                              console.error(e);
-                            }
-                          }}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
+                      
+                      {pendingDeleteId === asset.id ? (
+                        <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl flex items-center justify-between animate-in slide-in-from-top-2">
+                          <span className="text-xs font-bold text-rose-500">Delete {asset.name}?</span>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => setPendingDeleteId(null)}
+                              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800"
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/assets/${asset.id}`, { method: 'DELETE' });
+                                  if (res.ok) fetchAssets();
+                                  setPendingDeleteId(null);
+                                } catch (e) {
+                                  console.error(e);
+                                }
+                              }}
+                              className="text-[10px] font-black uppercase tracking-widest bg-rose-500 text-white px-2 py-1 rounded shadow-lg shadow-rose-500/20"
+                            >
+                              Confirm
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+                            <Edit2 size={12} /> Edit
+                          </button>
+                          <button 
+                            className="p-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 rounded-lg transition-colors"
+                            onClick={() => setPendingDeleteId(asset.id)}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -282,7 +304,6 @@ export default function AssetsPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-8 space-y-8 overflow-y-auto">
-              {/* Primary Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Asset Name / Label *</label>
@@ -325,7 +346,6 @@ export default function AssetsPage() {
                 </div>
               </div>
 
-              {/* Identity & Procurement */}
               <div className="space-y-4">
                 <h4 className="text-xs font-bold text-blue-500 uppercase tracking-widest">Identity & Procurement</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -377,7 +397,6 @@ export default function AssetsPage() {
                 </div>
               </div>
 
-              {/* Technical Specs */}
               <div className="space-y-4">
                 <h4 className="text-xs font-bold text-purple-500 uppercase tracking-widest">Technical Specifications</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -404,7 +423,6 @@ export default function AssetsPage() {
                 </div>
               </div>
 
-              {/* Assignment & Location */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Location</label>

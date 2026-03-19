@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { ChevronRight, Loader2, AlertCircle, Trash2 } from 'lucide-react';
+import { ChevronRight, Loader2, AlertCircle, Trash2, X } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Ticket, User } from '@/types';
 import TicketDetailModal from '@/components/TicketDetailModal';
@@ -12,10 +12,6 @@ const priorityColor: Record<string, string> = {
   P1: 'text-orange-400',
   P2: 'text-indigo-400',
   P3: 'text-zinc-400',
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  P0: 'P0 – Critical', P1: 'P1 – High', P2: 'P2 – Normal', P3: 'P3 – Low',
 };
 
 const statusColors: Record<string, string> = {
@@ -42,6 +38,9 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
   const [loading, setLoading] = useState(true);
   const [savingBulk, setSavingBulk] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  
   const { user: authUser } = useAuth();
   const isAdmin = authUser?.role === 'ADMIN';
   const currentPageRef = React.useRef(pagination.page);
@@ -62,7 +61,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
       const data = await res.json();
       setTickets(data.tickets);
       setPagination(data.pagination);
-      setSelectedTicketIds(new Set()); // clear selection on page change
+      setSelectedTicketIds(new Set()); 
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Connection error');
     } finally {
@@ -102,6 +101,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
     } else {
       setSelectedTicketIds(new Set(filteredTickets.map((t: Ticket) => t.id)));
     }
+    setShowBulkDeleteConfirm(false);
   };
 
   const toggleSelectTicket = (id: number, e: React.MouseEvent) => {
@@ -113,18 +113,24 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
       newSelected.add(id);
     }
     setSelectedTicketIds(newSelected);
+    setShowBulkDeleteConfirm(false);
   };
 
   const handleBulkAction = async (actionType: 'status' | 'priority' | 'assignee' | 'delete', value?: string) => {
     if (selectedTicketIds.size === 0) return;
-    if (actionType === 'delete' && !window.confirm(`Are you sure you want to delete ${selectedTicketIds.size} tickets?`)) return;
+    
+    if (actionType === 'delete' && !showBulkDeleteConfirm) {
+      setShowBulkDeleteConfirm(true);
+      return;
+    }
 
     setSavingBulk(true);
+    setBulkError(null);
     try {
       const data: Record<string, any> = {};
       if (actionType === 'status') data.status = value;
       if (actionType === 'priority') data.priority = value;
-      if (actionType === 'assignee') data.assignedToId = value ? parseInt(value) : undefined;
+      if (actionType === 'assignee') data.assignedToId = value ? parseInt(value) : null;
       if (actionType === 'delete') data.delete = true;
 
       const res = await fetch('/api/tickets/bulk', {
@@ -138,14 +144,15 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
       if (res.ok) {
         setSelectedTicketIds(new Set());
+        setShowBulkDeleteConfirm(false);
         fetchTickets(pagination.page);
       } else {
         const err = await res.json();
-        alert(`Bulk action failed: ${err.error || 'Unknown error'}`);
+        setBulkError(err.error || 'Bulk action failed');
       }
     } catch (e) {
       console.error(e);
-      alert('An error occurred during bulk action.');
+      setBulkError('An error occurred during bulk action.');
     } finally {
       setSavingBulk(false);
     }
@@ -263,7 +270,7 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
                     </div>
                     <div className="px-2 h-full flex items-center">
                       <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${statusColors[ticket.status] ?? 'bg-white/5 text-white/50'}`}>
-                        {ticket.status.replace('_', ' ')}
+                        {ticket.status.replaceAll('_', ' ')}
                       </span>
                     </div>
                     <div className="px-2 h-full flex items-center">
@@ -286,60 +293,90 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
 
         {/* Floating Action Bar */}
         {selectedTicketIds.size > 0 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-zinc-800 border border-white/10 shadow-2xl rounded-2xl px-4 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-5 z-20">
-            <span className="text-sm font-bold text-white px-2">
-              {selectedTicketIds.size} selected
-            </span>
-            <div className="h-4 w-px bg-white/10"></div>
-            
-            <div className="flex items-center gap-2">
-               <select 
-                  className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => e.target.value && handleBulkAction('status', e.target.value)}
-                  value=""
-               >
-                 <option value="" disabled>Set Status...</option>
-                 <option value="TODO">TODO</option>
-                 <option value="IN_PROGRESS">IN PROGRESS</option>
-                 <option value="AWAITING_USER">AWAITING USER</option>
-                 <option value="RESOLVED">RESOLVED</option>
-                 <option value="CLOSED">CLOSED</option>
-               </select>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-zinc-800 border border-white/10 shadow-2xl rounded-2xl px-4 py-3 flex flex-col items-center gap-2 animate-in slide-in-from-bottom-5 z-20 overflow-hidden min-w-[320px]">
+            {showBulkDeleteConfirm ? (
+              <div className="flex items-center justify-between w-full px-2 py-1">
+                <span className="text-xs font-bold text-red-400">Delete {selectedTicketIds.size} tickets?</span>
+                <div className="flex gap-2">
+                   <button 
+                    onClick={() => setShowBulkDeleteConfirm(false)}
+                    className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white px-2 py-1 rounded bg-white/5 transition-all"
+                   >
+                     Cancel
+                   </button>
+                   <button 
+                    disabled={savingBulk}
+                    onClick={() => handleBulkAction('delete')}
+                    className="text-[10px] font-black uppercase tracking-widest bg-red-500 text-white px-3 py-1 rounded shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                   >
+                     {savingBulk ? 'Deleting...' : 'Confirm Delete'}
+                   </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 w-full">
+                <span className="text-sm font-bold text-white px-2 shrink-0">
+                  {selectedTicketIds.size} selected
+                </span>
+                <div className="h-4 w-px bg-white/10 shrink-0"></div>
+                
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                  <select 
+                      className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
+                      onChange={(e) => e.target.value && handleBulkAction('status', e.target.value)}
+                      value=""
+                  >
+                    <option value="" disabled>Set Status...</option>
+                    <option value="TODO">TODO</option>
+                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                    <option value="AWAITING_USER">AWAITING USER</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                    <option value="CLOSED">CLOSED</option>
+                  </select>
 
-               <select 
-                  className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => e.target.value && handleBulkAction('priority', e.target.value)}
-                  value=""
-               >
-                 <option value="" disabled>Set Priority...</option>
-                 <option value="P0">P0 - Critical</option>
-                 <option value="P1">P1 - High</option>
-                 <option value="P2">P2 - Normal</option>
-                 <option value="P3">P3 - Low</option>
-               </select>
+                  <select 
+                      className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
+                      onChange={(e) => e.target.value && handleBulkAction('priority', e.target.value)}
+                      value=""
+                  >
+                    <option value="" disabled>Set Priority...</option>
+                    <option value="P0">P0 - Critical</option>
+                    <option value="P1">P1 - High</option>
+                    <option value="P2">P2 - Normal</option>
+                    <option value="P3">P3 - Low</option>
+                  </select>
 
-               <select 
-                  className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => e.target.value && handleBulkAction('assignee', e.target.value)}
-                  value=""
-               >
-                 <option value="" disabled>Assign To...</option>
-                 <option value="">Unassigned</option>
-                 {users?.map(u => (
-                   <option key={u.id} value={u.id}>{u.name || u.username}</option>
-                 ))}
-               </select>
+                  <select 
+                      className="bg-zinc-900 border border-white/10 rounded-lg text-xs px-2 py-1.5 focus:outline-none focus:border-indigo-500 text-white/80"
+                      onChange={(e) => e.target.value && handleBulkAction('assignee', e.target.value)}
+                      value=""
+                  >
+                    <option value="" disabled>Assign To...</option>
+                    <option value="">Unassigned</option>
+                    {users?.map(u => (
+                      <option key={u.id} value={u.id}>{u.name || u.username}</option>
+                    ))}
+                  </select>
 
-               {isAdmin && (
-                 <button 
-                  onClick={() => handleBulkAction('delete')}
-                  className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ml-2 flex items-center gap-1"
-                 >
-                   <Trash2 size={12} /> Delete
-                 </button>
-               )}
-            </div>
-            {savingBulk && <Loader2 className="w-4 h-4 animate-spin text-indigo-500 ml-2" />}
+                  {isAdmin && (
+                    <button 
+                      onClick={() => setShowBulkDeleteConfirm(true)}
+                      className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ml-2 flex items-center gap-1 shrink-0"
+                    >
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  )}
+                </div>
+                {savingBulk && <Loader2 className="w-4 h-4 animate-spin text-indigo-500 ml-2 shrink-0" />}
+              </div>
+            )}
+            {bulkError && (
+              <div className="w-full flex items-center gap-2 px-2 py-1 text-[10px] text-red-400 font-bold bg-red-400/5 rounded border border-red-400/10">
+                <AlertCircle size={10} />
+                {bulkError}
+                <button onClick={() => setBulkError(null)} className="ml-auto opacity-40 hover:opacity-100"><X size={10}/></button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Ticket, Comment as TicketComment, User, Priority, ChecklistItem } from '../types';
-import { X, Send, User as UserIcon, AlertCircle, CheckCircle, Loader2, Server, Cpu, Clock, Zap } from 'lucide-react';
+import { X, Send, User as UserIcon, AlertCircle, CheckCircle, Loader2, Server, Cpu, Clock, Zap, Trash2 } from 'lucide-react';
 import { uploadAttachment } from '@/lib/storage';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -36,6 +36,7 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Local editable state
   const [localStatus, setLocalStatus] = useState('');
@@ -123,6 +124,7 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
       setLocalDueDate(ticket.dueDate ? new Date(ticket.dueDate).toISOString().split('T')[0] : '');
       setLocalAsset(ticket.assetId ? String(ticket.assetId) : '');
       setChecklists(ticket.checklists || []);
+      setShowDeleteConfirm(false);
       fetchComments();
       fetchActivityLogs();
       if (!users) fetchStaff();
@@ -247,7 +249,7 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
   };
 
   const deleteTicket = async () => {
-    if (!ticket || !window.confirm("Are you sure you want to delete this ticket?")) return;
+    if (!ticket) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/tickets/${ticket.id}`, { method: 'DELETE' });
@@ -446,12 +448,30 @@ const TicketDetailModal = ({ ticket, isOpen, onClose, onUpdate, users, assets: i
 
               <div className="px-6 py-6 flex items-center justify-between">
                 {isAdmin ? (
-                  <button 
-                    onClick={deleteTicket} 
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold rounded-lg px-4 py-2 text-sm transition-all"
-                  >
-                    Delete Ticket
-                  </button>
+                  showDeleteConfirm ? (
+                    <div className="flex items-center gap-2 animate-in slide-in-from-left-2">
+                      <span className="text-xs font-bold text-red-500">Delete ticket?</span>
+                      <button 
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white px-2 py-1 rounded bg-white/5 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={deleteTicket}
+                        className="text-[10px] font-black uppercase tracking-widest bg-red-500 text-white px-2 py-1 rounded shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setShowDeleteConfirm(true)} 
+                      className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold rounded-lg px-4 py-2 text-sm transition-all flex items-center gap-2"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  )
                 ) : <div />}
                 <div className="flex gap-3">
                   <label className="bg-zinc-800 hover:bg-zinc-700 text-white/60 hover:text-white px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition-all flex items-center gap-2">

@@ -71,13 +71,7 @@ const PublicTicketForm = () => {
 
   return (
     <div className="min-h-screen bg-[#fcfcfd] text-zinc-900 selection:bg-indigo-100">
-      <header className="h-20 border-b border-zinc-200/60 flex items-center px-6 md:px-12 justify-between bg-white/80 backdrop-blur-xl sticky top-0 z-50">
-        <Link href="/" className="group flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition-all font-bold text-sm">
-          <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center group-hover:bg-zinc-200 transition-colors">
-            <ArrowLeft size={16} />
-          </div>
-          Back to Portal
-        </Link>
+      <header className="h-20 border-b border-zinc-200/60 flex items-center px-6 md:px-12 justify-center bg-white/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
             <Shield size={16} className="text-white" />
@@ -87,12 +81,12 @@ const PublicTicketForm = () => {
       </header>
 
       <main className="max-w-3xl mx-auto py-20 px-6">
-        <div className="mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-6">
+        <div className="mb-16 text-center md:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-6 mx-auto md:mx-0">
             <Sparkles size={12} /> Support Channel
           </div>
           <h1 className="text-5xl font-black text-zinc-900 tracking-tight mb-4">How can we help?</h1>
-          <p className="text-zinc-500 text-lg max-w-xl leading-relaxed font-medium">
+          <p className="text-zinc-500 text-lg max-w-xl leading-relaxed font-medium mx-auto md:mx-0">
             Describe the technical issue you're facing. Our distributed IT team typically responds within 2 hours.
           </p>
         </div>

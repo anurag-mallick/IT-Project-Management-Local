@@ -31,6 +31,7 @@ const Sidebar = ({ activeView, setActiveView, onNewTicket, onApplyView, isMobile
   const [viewsOpen, setViewsOpen] = useState(true);
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [spaces, setSpaces] = useState<{id: number, name: string}[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   React.useEffect(() => {
     fetch('/api/views').then(res => res && res.ok && res.json()).then(data => {
@@ -43,11 +44,17 @@ const Sidebar = ({ activeView, setActiveView, onNewTicket, onApplyView, isMobile
 
   const deleteView = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm("Delete this saved view?")) return;
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      setTimeout(() => setConfirmDeleteId(prev => prev === id ? null : prev), 2000);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/views/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setSavedViews((prev: SavedView[]) => prev.filter((v: SavedView) => v.id !== id));
+        setConfirmDeleteId(null);
       }
     } catch (e) {
       console.error(e);
@@ -226,7 +233,7 @@ const Sidebar = ({ activeView, setActiveView, onNewTicket, onApplyView, isMobile
                       <span className="truncate">{view.name}</span>
                       <Trash2 
                         size={12} 
-                        className="opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-red-400 transition-all shrink-0"
+                        className={`group-hover:opacity-100 transition-all shrink-0 ${confirmDeleteId === view.id ? 'opacity-100 text-red-500' : 'opacity-0 group-hover:opacity-40 hover:!opacity-100 hover:text-red-400'}`}
                         onClick={(e: React.MouseEvent) => deleteView(view.id, e)}
                       />
                     </div>

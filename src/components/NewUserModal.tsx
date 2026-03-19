@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 
 interface NewUserModalProps {
   isOpen: boolean;
@@ -12,6 +12,7 @@ interface NewUserModalProps {
 const NewUserModal = ({ isOpen, onClose, onSuccess }: NewUserModalProps) => {
   const {} = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -25,6 +26,7 @@ const NewUserModal = ({ isOpen, onClose, onSuccess }: NewUserModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/users', {
         method: 'POST',
@@ -41,10 +43,10 @@ const NewUserModal = ({ isOpen, onClose, onSuccess }: NewUserModalProps) => {
         onClose();
       } else {
         const data = await res.json();
-        alert(data.error || 'Error creating user');
+        setError(data.error || 'Error creating user');
       }
     } catch (err) {
-      alert('Error connecting to server');
+      setError('Error connecting to server');
     } finally {
       setLoading(false);
     }
@@ -61,6 +63,13 @@ const NewUserModal = ({ isOpen, onClose, onSuccess }: NewUserModalProps) => {
         <h2 className="text-2xl font-bold mb-6">Add New User</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2 text-red-500 text-xs font-bold mb-4">
+              <AlertCircle size={14} />
+              {error}
+            </div>
+          )}
+
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-white/40 ml-1">Full Name</label>
             <input 

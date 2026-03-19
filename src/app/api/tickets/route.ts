@@ -16,8 +16,14 @@ export const GET = withAuth(async (req: NextRequest, user: any) => {
     const skipPagination = searchParams.get('all') === 'true';
     const hasDueDate = searchParams.get('hasDueDate') === 'true';
 
+    const whereClause: any = {};
+    if (hasDueDate) {
+      whereClause.dueDate = { not: null };
+    }
+
     const [tickets, totalCount] = await Promise.all([
       prisma.ticket.findMany({
+        where: whereClause,
         select: {
           id: true, title: true, status: true, priority: true,
           createdAt: true, updatedAt: true, dueDate: true, slaBreachAt: true,
@@ -26,11 +32,10 @@ export const GET = withAuth(async (req: NextRequest, user: any) => {
           _count: { select: { comments: true, checklists: true } }
         },
         orderBy: { createdAt: 'desc' },
-        ...(hasDueDate ? { where: { dueDate: { not: null } } } : {}),
         ...(skipPagination ? {} : { skip, take: pageSize })
       }),
       prisma.ticket.count({
-        ...(hasDueDate ? { where: { dueDate: { not: null } } } : {})
+        where: whereClause
       })
     ]);
 
@@ -57,7 +62,6 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
       return NextResponse.json({ error: 'Title and description are required' }, { status: 400 });
     }
 
-    // Validate priority and status against enums
     const validatedPriority = (priority && Object.values(TicketPriority).includes(priority)) ? (priority as TicketPriority) : TicketPriority.P2;
     const validatedStatus = (status && Object.values(TicketStatus).includes(status)) ? (status as TicketStatus) : TicketStatus.TODO;
 
@@ -77,7 +81,6 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
       include: { assignedTo: { select: { id: true, username: true, name: true } } }
     });
 
-    // Log the creation
     const dbUser = await prisma.user.findFirst({
       where: { username: (user as any).email }
     });
@@ -91,10 +94,8 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
       }
     });
 
-    // Run Automations
     const autoUpdatedTicket = await runAutomations('ON_TICKET_CREATED', ticket);
 
-    // Send email to admin for P0 tickets
     if (validatedPriority === TicketPriority.P0) {
       const adminUsers = await prisma.user.findMany({ where: { role: 'ADMIN' } });
       for (const admin of adminUsers) {
@@ -124,4 +125,3 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
     }, { status: 500 });
   }
 });
-
