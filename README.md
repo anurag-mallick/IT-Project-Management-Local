@@ -20,25 +20,34 @@ Horizon IT is designed to bridge the gap between complex enterprise IT tools and
 
 ---
 
-## 🚀 Direct Installation (One-Command Setup)
+## Installation (Windows VM)
 
-For the fastest experience on macOS or Linux, run this single command in your terminal from the project root:
-
-```bash
-chmod +x setup.sh && ./setup.sh
-```
-
-For **Windows** users (CMD or PowerShell), run this single command:
+Open **PowerShell as Administrator** and run:
 
 ```powershell
-.\setup.bat
+irm https://raw.githubusercontent.com/anurag-mallick/IT-Project-Management-Local/main/install.ps1 | iex
 ```
 
-### 🏆 After Setup
-- **Web UI**: [http://localhost:3000](http://localhost:3000)
-- **Admin Email**: `admin@horizon-it.local`
-- **Admin Password**: `AdminPassword123!`
-- **Development**: `npm run dev` (if you didn't start it during setup)
+The installer will:
+1. Ask whether you want Docker or Native (direct PostgreSQL) installation
+2. Install all required components automatically
+3. Set up the database and create your admin account
+4. Print your team's access URL, admin email, and admin password
+5. Configure the app to start automatically on boot
+
+**Requirements:**
+- Windows 10/11 or Windows Server 2019+
+- PowerShell 5.1+ (run as Administrator)
+- Git ([download](https://git-scm.com/download/win))
+- Node.js 18+ ([download](https://nodejs.org))
+- For Docker mode: Docker Desktop ([download](https://www.docker.com/products/docker-desktop))
+- For Native mode: Nothing extra — PostgreSQL is installed automatically
+
+## Uninstall
+
+```powershell
+powershell -File uninstall.ps1
+```
 
 ---
 

@@ -1,0 +1,346 @@
+# ============================================
+#    HORIZON IT — Installation Wizard
+# ============================================
+
+# Step A: Check prerequisites
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "Please run PowerShell as Administrator and try again." -ForegroundColor Red
+    exit 1
+}
+
+# Check Git
+try {
+    git --version | Out-Null
+} catch {
+    Write-Host "Git is not installed. Please download and install Git from https://git-scm.com/download/win and try again." -ForegroundColor Red
+    exit 1
+}
+
+# Check Node.js 18+
+try {
+    $nodeVersion = node --version
+    $majorVersion = [int]($nodeVersion -replace 'v', '' -replace '\..*', '')
+    if ($majorVersion -lt 18) {
+        Write-Host "Node.js 18+ is required. Found $nodeVersion. Please download from https://nodejs.org" -ForegroundColor Red
+        exit 1
+    }
+} catch {
+    Write-Host "Node.js is not installed. Please download from https://nodejs.org and try again." -ForegroundColor Red
+    exit 1
+}
+
+# Step B: Ask the user which installation mode they want
+Clear-Host
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "   HORIZON IT — Installation Wizard" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Choose your installation method:"
+Write-Host ""
+Write-Host "  [1] Docker     — Recommended. Requires Docker Desktop."
+Write-Host "                   Fully containerized, easiest to manage."
+Write-Host ""
+Write-Host "  [2] Native     — No Docker needed. Uses PostgreSQL"
+Write-Host "                   installed directly on this machine."
+Write-Host ""
+
+$choice = ""
+while ($choice -notmatch "^[12]$") {
+    $choice = Read-Host "Enter choice (1 or 2)"
+}
+
+# Step C: Clone the repo (if not already in the repo directory)
+if (-not (Test-Path ".\package.json")) {
+    Write-Host "Cloning repository..."
+    git clone https://github.com/anurag-mallick/IT-Project-Management-Local.git horizon-it
+    Set-Location horizon-it
+}
+
+# Step D: Generate secrets
+Write-Host "Generating secure random keys..."
+$JWT_SECRET = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 48 | % {[char]$_})
+$DB_PASSWORD = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 24 | % {[char]$_})
+$ADMIN_PASSWORD = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 16 | % {[char]$_})
+
+# Step E: Detect the machine's local network IP
+$LOCAL_IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" -and $_.IPAddress -notlike "169.*" } | Select-Object -First 1).IPAddress
+if (-not $LOCAL_IP) { $LOCAL_IP = "localhost" }
+
+# Step F: Define Installation Functions
+
+function Install-Docker {
+    Write-Host "Starting Docker installation..." -ForegroundColor Yellow
+    # Check Docker is installed and running
+    try {
+        docker info >$null 2>&1
+    } catch {
+        Write-Host "Docker Desktop is not running. Please start Docker Desktop and try again." -ForegroundColor Red
+        Write-Host "Download: https://www.docker.com/products/docker-desktop"
+        exit 1
+    }
+
+    # Write .env file
+    @"
+POSTGRES_PASSWORD=$DB_PASSWORD
+JWT_SECRET=$JWT_SECRET
+NEXT_PUBLIC_APP_URL=http://${LOCAL_IP}:3000
+NODE_ENV=production
+"@ | Set-Content .env
+
+    # Build and start containers
+    Write-Host "Building containers (this takes 3-5 minutes on first run)..."
+    docker-compose down --remove-orphans 2>$null
+    docker-compose up -d --build
+
+    # Wait for DB to be ready
+    Write-Host "Waiting for database to initialize..."
+    Start-Sleep -Seconds 15
+
+    # Run migrations
+    Write-Host "Running database migrations..."
+    docker-compose exec app npx prisma db push --accept-data-loss
+
+    # Seed admin user
+    Write-Host "Creating admin account..."
+    docker-compose exec app node -e "
+const { PrismaClient } = require('./src/generated/prisma');
+const bcrypt = require('bcryptjs');
+const prisma = new PrismaClient();
+async function main() {
+  const hashed = await bcrypt.hash('$ADMIN_PASSWORD', 10);
+  await prisma.user.upsert({
+    where: { email: 'admin@horizonit.local' },
+    update: { password: hashed },
+    create: {
+      email: 'admin@horizonit.local',
+      username: 'admin',
+      name: 'Administrator',
+      role: 'ADMIN',
+      password: hashed,
+      isActive: true
+    }
+  });
+  console.log('Admin user ready.');
+  await prisma.\$disconnect();
+}
+main().catch(err => { console.error(err); process.exit(1); });
+"
+
+    # Configure Windows Firewall to allow port 3000
+    netsh advfirewall firewall add rule name="Horizon IT" dir=in action=allow protocol=TCP localport=3000 | Out-Null
+
+    Write-Host "Docker installation complete." -ForegroundColor Green
+}
+
+function Install-Native {
+    Write-Host "Starting Native installation..." -ForegroundColor Yellow
+    # Step 1: Check if PostgreSQL is already installed
+    $pgPath = Get-Command psql -ErrorAction SilentlyContinue
+    
+    if (-not $pgPath) {
+        Write-Host ""
+        Write-Host "PostgreSQL is not installed."
+        Write-Host "Downloading PostgreSQL 16 installer..."
+        
+        $pgInstaller = "$env:TEMP\postgresql-installer.exe"
+        $pgVersion = "16.2-1"
+        $pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-$pgVersion-windows-x64.exe"
+        
+        Invoke-WebRequest -Uri $pgUrl -OutFile $pgInstaller -UseBasicParsing
+        
+        Write-Host "Installing PostgreSQL silently (this may take 2-3 minutes)..."
+        # Silent install: no pgAdmin, no Stack Builder, just the server and CLI tools
+        Start-Process -FilePath $pgInstaller -ArgumentList @(
+            "--mode", "unattended",
+            "--unattendedmodeui", "none",
+            "--servicename", "postgresql-16",
+            "--servicepassword", $DB_PASSWORD,
+            "--superpassword", $DB_PASSWORD,
+            "--enable-components", "server,commandlinetools",
+            "--disable-components", "pgAdmin,stackbuilder",
+            "--serverport", "5432"
+        ) -Wait
+        
+        # Add psql to PATH for this session
+        $env:PATH += ";C:\Program Files\PostgreSQL\16\bin"
+        
+        Write-Host "PostgreSQL installed successfully." -ForegroundColor Green
+    } else {
+        Write-Host "PostgreSQL is already installed. Skipping installation." -ForegroundColor Yellow
+    }
+
+    # Step 2: Create database and user
+    Write-Host "Setting up database..."
+    
+    $env:PGPASSWORD = $DB_PASSWORD
+    $psqlPath = "C:\Program Files\PostgreSQL\16\bin\psql.exe"
+    if (-not (Test-Path $psqlPath)) {
+        $psqlPath = (Get-Command psql).Source
+    }
+    
+    # Create the database
+    & $psqlPath -U postgres -c "CREATE DATABASE horizon_it;" 2>$null
+    # Create app user
+    & $psqlPath -U postgres -c "CREATE USER horizon_user WITH PASSWORD '$DB_PASSWORD';" 2>$null
+    & $psqlPath -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE horizon_it TO horizon_user;" 2>$null
+    & $psqlPath -U postgres -c "ALTER DATABASE horizon_it OWNER TO horizon_user;" 2>$null
+
+    # Step 3: Write .env file
+    @"
+DATABASE_URL=postgresql://horizon_user:$DB_PASSWORD@localhost:5432/horizon_it
+JWT_SECRET=$JWT_SECRET
+NEXT_PUBLIC_APP_URL=http://${LOCAL_IP}:3000
+NODE_ENV=production
+"@ | Set-Content .env
+
+    # Step 4: Install Node dependencies
+    Write-Host "Installing dependencies (this may take 2-3 minutes)..."
+    npm install --production=false
+
+    # Step 5: Generate Prisma client and push schema
+    Write-Host "Setting up database schema..."
+    npx prisma generate
+    npx prisma db push --accept-data-loss
+
+    # Step 6: Seed admin user
+    Write-Host "Creating admin account..."
+    node -e "
+const { PrismaClient } = require('./src/generated/prisma');
+const bcrypt = require('bcryptjs');
+const prisma = new PrismaClient();
+async function main() {
+  const hashed = await bcrypt.hash('$ADMIN_PASSWORD', 10);
+  await prisma.user.upsert({
+    where: { email: 'admin@horizonit.local' },
+    update: { password: hashed },
+    create: {
+      email: 'admin@horizonit.local',
+      username: 'admin',
+      name: 'Administrator',
+      role: 'ADMIN',
+      password: hashed,
+      isActive: true
+    }
+  });
+  console.log('Admin user ready.');
+  await prisma.\$disconnect();
+}
+main().catch(err => { console.error(err); process.exit(1); });
+"
+
+    # Step 7: Build the Next.js app
+    Write-Host "Building application (this takes 2-3 minutes)..."
+    npm run build
+
+    # Step 8: Create a Windows Service so the app starts on boot
+    Write-Host "Registering Horizon IT as a Windows Service..."
+    
+    # Install node-windows globally to manage the service
+    npm install -g node-windows
+    
+    # Create service registration script
+    $installScript = @"
+const Service = require('node-windows').Service;
+const path = require('path');
+const svc = new Service({
+  name: 'Horizon IT',
+  description: 'Horizon IT Helpdesk Application',
+  script: path.join(__dirname, 'next-start.js'), // We'll create this wrapper
+  nodeOptions: [],
+  env: [
+    { name: 'NODE_ENV', value: 'production' },
+    { name: 'PORT', value: '3000' }
+  ]
+});
+svc.on('install', () => { svc.start(); console.log('Service installed and started.'); });
+svc.on('alreadyinstalled', () => { svc.start(); console.log('Service already installed, starting...'); });
+svc.install();
+"@
+    $installScript | Set-Content install-service.js
+
+    # Create a wrapper script because node-windows expects a .js file
+    @"
+const { spawn } = require('child_process');
+const path = require('path');
+const nextPath = path.join(__dirname, 'node_modules', 'next', 'dist', 'bin', 'next');
+const child = spawn('node', [nextPath, 'start', '-p', '3000'], {
+  cwd: __dirname,
+  env: process.env,
+  stdio: 'inherit'
+});
+child.on('exit', (code) => process.exit(code));
+"@ | Set-Content next-start.js
+
+    node install-service.js
+    Remove-Item install-service.js
+
+    # Step 9: Open Windows Firewall for port 3000
+    netsh advfirewall firewall add rule name="Horizon IT" dir=in action=allow protocol=TCP localport=3000 | Out-Null
+
+    Write-Host "Native installation complete." -ForegroundColor Green
+}
+
+# Execute based on choice
+if ($choice -eq "1") {
+    Install-Docker
+    $mode = "Docker"
+    $stopInstructions = "docker-compose stop"
+    $startInstructions = "docker-compose start"
+} else {
+    Install-Native
+    $mode = "Native"
+    $stopInstructions = 'net stop "Horizon IT"'
+    $startInstructions = 'net start "Horizon IT"'
+}
+
+# Step G: Print Summary and Save INFO file
+$installDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+$infoContent = @"
+============================================
+HORIZON IT — Installation Details
+============================================
+Installed on : $installDate
+Install mode : $mode
+Machine IP   : $LOCAL_IP
+
+ACCESS DETAILS (share with your team)
+--------------------------------------
+URL          : http://$($LOCAL_IP):3000
+Admin Email  : admin@horizonit.local
+Admin Password: $ADMIN_PASSWORD
+
+MANAGEMENT
+--------------------------------------
+Stop app     : $stopInstructions
+Start app    : $startInstructions
+Uninstall    : powershell -File uninstall.ps1
+
+IMPORTANT
+--------------------------------------
+- Keep this file secure. It contains your admin password.
+- Change your admin password after first login via Settings > Security.
+- All team members must be on the same network to access the URL.
+============================================
+"@
+
+$infoContent | Set-Content INSTALL_INFO.txt
+
+Clear-Host
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host "   HORIZON IT — Installation Complete!" -ForegroundColor Cyan
+Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  Access URL    : http://$($LOCAL_IP):3000" -ForegroundColor Green
+Write-Host "  Admin Email   : admin@horizonit.local"
+Write-Host "  Admin Password: $ADMIN_PASSWORD" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  Share the Access URL with your team."
+Write-Host "  They can open it in any browser on this network."
+Write-Host ""
+Write-Host "  To stop the app:   $stopInstructions"
+Write-Host "  To start again:    $startInstructions"
+Write-Host ""
+Write-Host "  All details saved to: INSTALL_INFO.txt"
+Write-Host ""
+Write-Host "============================================" -ForegroundColor Cyan
