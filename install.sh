@@ -3,6 +3,7 @@
 # ============================================
 #    HORIZON IT — Installation Wizard
 # ============================================
+set -eo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -239,8 +240,12 @@ main().catch(err => { console.error(err); process.exit(1); });
     if ! command -v pm2 &> /dev/null; then
         sudo npm install -g pm2
     fi
-    pm2 delete "horizon-it" 2>/dev/null
+    pm2 delete "horizon-it" 2>/dev/null || true
     pm2 start npm --name "horizon-it" -- start
+    
+    # Save process list and setup startup script
+    echo -e "${YELLOW}Setting up system startup for PM2...${NC}"
+    pm2 startup | tail -n 1 | bash
     pm2 save
 }
 
