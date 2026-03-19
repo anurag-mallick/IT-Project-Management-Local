@@ -12,9 +12,11 @@ Horizon IT is designed to bridge the gap between complex enterprise IT tools and
 - **Dynamic Density System**: Switch between **Compact**, **Comfortable**, or **Spacious** UI modes to match your workflow.
 - **Intelligence Dashboard**: Real-time KPI tracking, volume trends, and priority distribution analytics.
 - **SLA Watch**: Dedicated surveillance of service level commitments with real-time countdowns and urgency grouping.
+- **Integrated UI Feedback**: Replaced intrusive `alert()` and `window.confirm()` calls with a custom **Toast** system and inline confirmation patterns for a seamless experience.
 - **Slide-over Ticket Details**: A non-disruptive, right-side panel for ticket management including AI-assisted triage and mention-based commenting.
 - **Virtualized List View**: High-performance ticket table powered by `@tanstack/react-virtual` for handling large datasets smoothly.
 - **Streamlined Workflow**: Kanban boards with status-based borders, magic triage actions, and integrated checklist management.
+- **Standalone Public Portal**: A dedicated, distraction-free interface for users to submit requests without needing an account.
 
 ---
 
@@ -72,10 +74,12 @@ npm run dev
 ## 📦 Architecture
 
 - **Frontend**: Next.js 15, Tailwind CSS, Framer Motion
-- **State Management**: React Context (Density, Auth)
+- **Logic**: TypeScript, Lucide Icons, Date-fns
+- **Performance**: High-speed virtualization (@tanstack/react-virtual)
 - **Database**: PostgreSQL (Dockerized) via Prisma ORM
-- **Performance**: High-speed virtualization and intelligent polling
+- **State Management**: React Context (Density, Auth)
 - **Authentication**: Local JWT with HttpOnly cookie security
+- **Email**: Nodemailer integration for P0 notifications
 - **Storage**: Local filesystem mapping for attachments
 
 ---
