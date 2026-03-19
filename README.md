@@ -28,10 +28,10 @@ For the fastest experience on macOS or Linux, run this single command in your te
 chmod +x setup.sh && ./setup.sh
 ```
 
-For **Windows** users, use the automated batch script:
+For **Windows** users (CMD or PowerShell), run this single command:
 
-```bash
-setup.bat
+```powershell
+.\setup.bat
 ```
 
 ### 🏆 After Setup
