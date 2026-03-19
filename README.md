@@ -18,35 +18,46 @@ Horizon IT is designed to bridge the gap between complex enterprise IT tools and
 - **Streamlined Workflow**: Kanban boards with status-based borders, magic triage actions, and integrated checklist management.
 - **Standalone Public Portal**: A dedicated, distraction-free interface for users to submit requests without needing an account.
 
----
+## Installation
 
-## Installation (Windows VM)
-
+### Windows (VM or Desktop)
 Open **PowerShell as Administrator** and run:
-
 ```powershell
 irm https://raw.githubusercontent.com/anurag-mallick/IT-Project-Management-Local/main/install.ps1 | iex
 ```
 
-The installer will:
+### Linux & macOS
+Open your **Terminal** and run:
+```bash
+curl -sSL https://raw.githubusercontent.com/anurag-mallick/IT-Project-Management-Local/main/install.sh | bash
+```
+
+The installers will handle prerequisite checks, auto-install missing dependencies (Git, Node.js, PostgreSQL/Docker), clone the repository, and set up your admin account automatically.
+
+---
+
+## What the Installer Does
 1. Ask whether you want Docker or Native (direct PostgreSQL) installation
 2. Install all required components automatically
 3. Set up the database and create your admin account
 4. Print your team's access URL, admin email, and admin password
-5. Configure the app to start automatically on boot
+5. Configure the app to start automatically on boot (using Windows Service or PM2)
 
 **Requirements:**
-- Windows 10/11 or Windows Server 2019+
-- PowerShell 5.1+ (run as Administrator)
-- Git (installed automatically if missing)
-- Node.js 18+ (installed automatically if missing)
-- For Docker mode: Docker Desktop ([download](https://www.docker.com/products/docker-desktop))
-- For Native mode: PostgreSQL 16 (installed automatically)
+- **Windows**: 10/11 or Windows Server 2019+ (PowerShell 5.1+)
+- **macOS**: Catalina 10.15+ (Homebrew recommended)
+- **Linux**: Ubuntu 20.04+, Debian 11+, or Fedora 38+
 
 ## Uninstall
 
+**Windows**:
 ```powershell
 powershell -File uninstall.ps1
+```
+
+**Linux & macOS**:
+```bash
+bash uninstall.sh
 ```
 
 ---
