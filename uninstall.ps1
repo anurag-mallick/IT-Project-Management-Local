@@ -48,11 +48,9 @@ try {
     if ($confirm -eq "YES") {
         Write-Host "Dropping database and user..."
         if (Test-Path ".env") {
-            $dbUrl = Select-String -Path ".env" -Pattern "DATABASE_URL=postgresql://([^:]+):([^@]+)@"
-            if ($dbUrl) {
-                # This is a bit complex in PS to extract regex groups, let's try a simpler way if possible
-                # or just use the postgres superuser if we have the password
-                $env:PGPASSWORD = (Get-Content .env | Select-String "DATABASE_URL" | ForEach-Object { $_.ToString().Split(':')[2].Split('@')[0] })
+            $dbUrlContent = Get-Content .env | Select-String "DATABASE_URL"
+            if ($dbUrlContent -match "postgresql://[^:]+:([^@]+)@") {
+                $env:PGPASSWORD = $Matches[1]
             }
         }
         

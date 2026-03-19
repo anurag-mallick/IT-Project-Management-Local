@@ -117,21 +117,33 @@ NODE_ENV=production
     docker-compose up -d --build
 
     # Wait for DB to be ready
-    Write-Host "Waiting for database to initialize..."
-    Start-Sleep -Seconds 15
+    Write-Host "Waiting for database to be ready..."
+    $maxWait = 60
+    $waited = 0
+    do {
+        Start-Sleep -Seconds 3
+        $waited += 3
+        $healthy = docker-compose ps db | Select-String "healthy"
+    } while (-not $healthy -and $waited -lt $maxWait)
+
+    if (-not $healthy) {
+        Write-Host "Database did not become healthy in time. Check Docker logs." -ForegroundColor Red
+        exit 1
+    }
 
     # Run migrations
     Write-Host "Running database migrations..."
-    docker-compose exec app npx prisma db push --accept-data-loss
+    docker-compose exec -T app npx prisma db push --accept-data-loss
 
     # Seed admin user
     Write-Host "Creating admin account..."
-    docker-compose exec app node -e "
+    $env:ADMIN_PASS = $ADMIN_PASSWORD
+    docker-compose exec -T -e ADMIN_PASS app node -e "
 const { PrismaClient } = require('./src/generated/prisma');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 async function main() {
-  const hashed = await bcrypt.hash('$ADMIN_PASSWORD', 10);
+  const hashed = await bcrypt.hash(process.env.ADMIN_PASS, 10);
   await prisma.user.upsert({
     where: { email: 'admin@horizonit.local' },
     update: { password: hashed },
@@ -167,7 +179,7 @@ function Install-Native {
         Write-Host "Downloading PostgreSQL 16 installer..."
         
         $pgInstaller = "$env:TEMP\postgresql-installer.exe"
-        $pgVersion = "16.2-1"
+        $pgVersion = "16.6-1"
         $pgUrl = "https://get.enterprisedb.com/postgresql/postgresql-$pgVersion-windows-x64.exe"
         
         Invoke-WebRequest -Uri $pgUrl -OutFile $pgInstaller -UseBasicParsing
@@ -220,20 +232,24 @@ NODE_ENV=production
     # Step 4: Install Node dependencies
     Write-Host "Installing dependencies (this may take 2-3 minutes)..."
     npm install --production=false
+    if ($LASTEXITCODE -ne 0) { Write-Host "npm install failed." -ForegroundColor Red; exit 1 }
 
     # Step 5: Generate Prisma client and push schema
     Write-Host "Setting up database schema..."
     npx prisma generate
+    if ($LASTEXITCODE -ne 0) { Write-Host "Prisma generate failed." -ForegroundColor Red; exit 1 }
     npx prisma db push --accept-data-loss
+    if ($LASTEXITCODE -ne 0) { Write-Host "Prisma db push failed." -ForegroundColor Red; exit 1 }
 
     # Step 6: Seed admin user
     Write-Host "Creating admin account..."
+    $env:ADMIN_PASS = $ADMIN_PASSWORD
     node -e "
 const { PrismaClient } = require('./src/generated/prisma');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 async function main() {
-  const hashed = await bcrypt.hash('$ADMIN_PASSWORD', 10);
+  const hashed = await bcrypt.hash(process.env.ADMIN_PASS, 10);
   await prisma.user.upsert({
     where: { email: 'admin@horizonit.local' },
     update: { password: hashed },
@@ -255,12 +271,13 @@ main().catch(err => { console.error(err); process.exit(1); });
     # Step 7: Build the Next.js app
     Write-Host "Building application (this takes 2-3 minutes)..."
     npm run build
+    if ($LASTEXITCODE -ne 0) { Write-Host "Build failed." -ForegroundColor Red; exit 1 }
 
     # Step 8: Create a Windows Service so the app starts on boot
     Write-Host "Registering Horizon IT as a Windows Service..."
     
-    # Install node-windows globally to manage the service
-    npm install -g node-windows
+    # Install node-windows locally to manage the service
+    npm install node-windows
     
     # Create service registration script
     $installScript = @"

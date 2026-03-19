@@ -123,19 +123,29 @@ EOF
     docker-compose down --remove-orphans 2>/dev/null
     docker-compose up -d --build
 
-    echo -e "Waiting for database..."
-    sleep 15
+    echo -e "Waiting for database to be ready..."
+    MAX_WAIT=60
+    WAITED=0
+    until [ "$(docker-compose ps db | grep 'healthy')" ] || [ $WAITED -ge $MAX_WAIT ]; do
+        sleep 3
+        WAITED=$((WAITED + 3))
+    done
+
+    if ! docker-compose ps db | grep 'healthy' >/dev/null; then
+        echo -e "${RED}Database did not become healthy in time. Check Docker logs.${NC}"
+        exit 1
+    fi
 
     echo -e "Running migrations..."
     docker-compose exec -T app npx prisma db push --accept-data-loss
 
     echo -e "Seeding admin..."
-    docker-compose exec -T app node -e "
+    docker-compose exec -T -e ADMIN_PASS="$ADMIN_PASSWORD" app node -e "
 const { PrismaClient } = require('./src/generated/prisma');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 async function main() {
-  const hashed = await bcrypt.hash('$ADMIN_PASSWORD', 10);
+  const hashed = await bcrypt.hash(process.env.ADMIN_PASS, 10);
   await prisma.user.upsert({
     where: { email: 'admin@horizonit.local' },
     update: { password: hashed },
@@ -200,12 +210,12 @@ EOF
     npx prisma db push --accept-data-loss
 
     # 5. Seed Admin
-    node -e "
+    ADMIN_PASS="$ADMIN_PASSWORD" node -e "
 const { PrismaClient } = require('./src/generated/prisma');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 async function main() {
-  const hashed = await bcrypt.hash('$ADMIN_PASSWORD', 10);
+  const hashed = await bcrypt.hash(process.env.ADMIN_PASS, 10);
   await prisma.user.upsert({
     where: { email: 'admin@horizonit.local' },
     update: { password: hashed },
