@@ -20,43 +20,25 @@ Horizon IT is designed to bridge the gap between complex enterprise IT tools and
 
 ---
 
-## 🚀 Quick Start (Local PC)
+## 🚀 Direct Installation (One-Command Setup)
 
-These steps are optimized for running the application directly on your local machine using Docker for the database.
+For the fastest experience on macOS or Linux, run this single command in your terminal from the project root:
 
-### 1. Prerequisites
-- **Node.js 20+**
-- **Docker Desktop** (must be running)
-
-### 2. Setup Configuration
-Clone the repository and create your environment file:
 ```bash
-cp .env.example .env
-```
-Edit `.env` and ensure `DATABASE_URL` and `DIRECT_URL` point to `localhost:5432`.
-
-### 3. Launch
-```bash
-# Install dependencies
-npm install
-
-# Start the database container
-docker-compose up -d db
-
-# Sync database schema
-npx prisma db push
-
-# Seed the database (Admin Account & Policies)
-node scripts/seed-pg.js
-
-# Start Development Server
-npm run dev
+chmod +x setup.sh && ./setup.sh
 ```
 
-### 4. Access
+For **Windows** users, use the automated batch script:
+
+```bash
+setup.bat
+```
+
+### 🏆 After Setup
 - **Web UI**: [http://localhost:3000](http://localhost:3000)
 - **Admin Email**: `admin@horizon-it.local`
 - **Admin Password**: `AdminPassword123!`
+- **Development**: `npm run dev` (if you didn't start it during setup)
 
 ---
 
