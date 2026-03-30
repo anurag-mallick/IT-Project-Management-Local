@@ -6,18 +6,25 @@ Horizon IT is designed to bridge the gap between complex enterprise IT tools and
 
 ---
 
-## ✨ Key Features (Redesign v2.0)
+## ✨ Premium Features (v2.0)
 
-- **Premium Design System**: A high-fidelity dark-mode interface with glassmorphism, custom typography, and a refined color palette.
-- **Dynamic Density System**: Switch between **Compact**, **Comfortable**, or **Spacious** UI modes to match your workflow.
-- **Intelligence Dashboard**: Real-time KPI tracking, volume trends, and priority distribution analytics.
-- **SLA Watch**: Dedicated surveillance of service level commitments with real-time countdowns and urgency grouping.
-- **Automated Email-to-Ticket Conversion**: Integrated IMAP polling logic to automatically generate and triage tickets from incoming support emails.
-- **Integrated UI Feedback**: Replaced intrusive `alert()` and `window.confirm()` calls with a custom **Toast** system and inline confirmation patterns for a seamless experience.
-- **Slide-over Ticket Details**: A non-disruptive, right-side panel for ticket management including AI-assisted triage and mention-based commenting.
-- **Virtualized List View**: High-performance ticket table powered by `@tanstack/react-virtual` for handling large datasets smoothly.
-- **Streamlined Workflow**: Kanban boards with status-based borders, magic triage actions, and integrated checklist management.
-- **Standalone Public Portal**: A dedicated, distraction-free interface for users to submit requests without needing an account.
+### 🎨 State-of-the-Art UI/UX
+- **Glassmorphism Aesthetics:** Modern, sleek interface with blurred backdrops and vibrant gradients for a premium feel.
+- **Dynamic Density System:** Switch between **Compact**, **Comfortable**, or **Spacious** UI modes instantly.
+- **Micro-Animations:** Fluid transitions and state changes powered by Framer Motion.
+- **Virtualized Lists:** High-performance ticket tables powered by `@tanstack/react-virtual` for handling massive datasets.
+- **Integrated Feedback System:** Custom Toast notifications and inline confirmation patterns replace browser defaults.
+
+### 🎫 Intelligent Service Desk
+- **SLA Watch:** Real-time surveillance of service level commitments with urgency grouping and countdowns.
+- **Omnichannel Workflow:** Manage tickets via Kanban boards, Virtualized Lists, or Slide-over detail panels.
+- **Checklist Management:** Break down complex resolutions into actionable, trackable tasks.
+- **Automated Triage:** AI-ready triage fields and mention-based commenting for team collaboration.
+
+### 📧 Advanced Email Infrastructure
+- **Unified Email Settings UI:** A dedicated, secure interface (Admin Only) to manage SMTP and IMAP credentials.
+- **Automated Email-to-Ticket Conversion:** Integrated IMAP polling logic to automatically create tickets from incoming support emails.
+- **Self-Hosted SMTP/IMAP:** Complete control over your data with direct integration into your private email infrastructure.
 
 ## Installation
 
