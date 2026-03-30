@@ -53,25 +53,40 @@ if ($installNode) {
     $env:PATH += ";C:\Program Files\nodejs"
 }
 
-# Step B: Ask the user which installation mode they want
+# Step B: Interactive Configuration
 Clear-Host
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "   HORIZON IT — Installation Wizard" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Choose your installation method:"
-Write-Host ""
-Write-Host "  [1] Docker     — Recommended. Requires Docker Desktop."
-Write-Host "                   Fully containerized, easiest to manage."
-Write-Host ""
-Write-Host "  [2] Native     — No Docker needed. Uses PostgreSQL"
-Write-Host "                   installed directly on this machine."
-Write-Host ""
 
-$choice = ""
-while ($choice -notmatch "^[12]$") {
-    $choice = Read-Host "Enter choice (1 or 2)"
+# 1. Environment Selection
+Write-Host "Choose your deployment environment:"
+Write-Host "  [1] Local System — Optimized for personal desktop/laptop."
+Write-Host "  [2] Virtual Machine / Server — Optimized for shared network access."
+$env_choice = ""
+while ($env_choice -notmatch "^[12]$") {
+    $env_choice = Read-Host "Enter choice (1 or 2)"
 }
+
+# 2. Database Selection
+Write-Host "`nChoose your database method:"
+Write-Host "  [1] Docker — Recommended. Requires Docker Desktop."
+Write-Host "  [2] Native — No Docker needed. Installs PostgreSQL directly."
+$db_choice = ""
+while ($db_choice -notmatch "^[12]$") {
+    $db_choice = Read-Host "Enter choice (1 or 2)"
+}
+
+# 3. Roundcube Integration
+Write-Host "`nConfigure Roundcube Email Integration:"
+$EMAIL_ID = Read-Host "Enter Roundcube Email (e.g., support@domain.in)"
+$EMAIL_PW = Read-Host "Enter Email Password"
+$IMAP_PORT = Read-Host "Enter IMAPS Port (default 993)"
+if (-not $IMAP_PORT) { $IMAP_PORT = "993" }
+
+# Extract host from email
+$MAIL_HOST = "mail." + ($EMAIL_ID -replace '.*@', '')
 
 # Step C: Clone the repo (if not already in the repo directory)
 if (-not (Test-Path ".\package.json")) {
@@ -109,6 +124,21 @@ POSTGRES_PASSWORD=$DB_PASSWORD
 JWT_SECRET=$JWT_SECRET
 NEXT_PUBLIC_APP_URL=http://${LOCAL_IP}:3000
 NODE_ENV=production
+
+# Email Configuration (SMTP - Outgoing)
+SMTP_HOST=$MAIL_HOST
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=$EMAIL_ID
+SMTP_PASS=$EMAIL_PW
+SMTP_FROM='IT Support <$EMAIL_ID>'
+
+# Email Configuration (IMAP - Incoming)
+IMAP_HOST=$MAIL_HOST
+IMAP_PORT=$IMAP_PORT
+IMAP_USER=$EMAIL_ID
+IMAP_PASS=$EMAIL_PW
+IMAP_TICKET_FOLDER=INBOX
 "@ | Set-Content .env
 
     # Build and start containers
@@ -162,8 +192,14 @@ async function main() {
 main().catch(err => { console.error(err); process.exit(1); });
 "
 
-    # Configure Windows Firewall to allow port 3000
-    netsh advfirewall firewall add rule name="Horizon IT" dir=in action=allow protocol=TCP localport=3000 | Out-Null
+    # Configure Windows Firewall
+    if ($env_choice -eq "2") {
+        # VM Mode: Open all inbound for 3000
+        netsh advfirewall firewall add rule name="Horizon IT (VM)" dir=in action=allow protocol=TCP localport=3000 | Out-Null
+    } else {
+        # Local Mode: Just allow local subnet or standard
+        netsh advfirewall firewall add rule name="Horizon IT (Local)" dir=in action=allow protocol=TCP localport=3000 | Out-Null
+    }
 
     Write-Host "Docker installation complete." -ForegroundColor Green
 }
@@ -227,6 +263,21 @@ DATABASE_URL=postgresql://horizon_user:$DB_PASSWORD@localhost:5432/horizon_it
 JWT_SECRET=$JWT_SECRET
 NEXT_PUBLIC_APP_URL=http://${LOCAL_IP}:3000
 NODE_ENV=production
+
+# Email Configuration (SMTP - Outgoing)
+SMTP_HOST=$MAIL_HOST
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=$EMAIL_ID
+SMTP_PASS=$EMAIL_PW
+SMTP_FROM='IT Support <$EMAIL_ID>'
+
+# Email Configuration (IMAP - Incoming)
+IMAP_HOST=$MAIL_HOST
+IMAP_PORT=$IMAP_PORT
+IMAP_USER=$EMAIL_ID
+IMAP_PASS=$EMAIL_PW
+IMAP_TICKET_FOLDER=INBOX
 "@ | Set-Content .env
 
     # Step 4: Install Node dependencies
@@ -316,13 +367,17 @@ child.on('exit', (code) => process.exit(code));
     Remove-Item install-service.js
 
     # Step 9: Open Windows Firewall for port 3000
-    netsh advfirewall firewall add rule name="Horizon IT" dir=in action=allow protocol=TCP localport=3000 | Out-Null
+    if ($env_choice -eq "2") {
+        netsh advfirewall firewall add rule name="Horizon IT (VM)" dir=in action=allow protocol=TCP localport=3000 | Out-Null
+    } else {
+        netsh advfirewall firewall add rule name="Horizon IT (Local)" dir=in action=allow protocol=TCP localport=3000 | Out-Null
+    }
 
     Write-Host "Native installation complete." -ForegroundColor Green
 }
 
 # Execute based on choice
-if ($choice -eq "1") {
+if ($db_choice -eq "1") {
     Install-Docker
     $mode = "Docker"
     $stopInstructions = "docker-compose stop"
@@ -384,3 +439,6 @@ Write-Host ""
 Write-Host "  All details saved to: INSTALL_INFO.txt"
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
+Write-Host ""
+
+Read-Host "Installation complete. Press Enter to continue and close this window..."

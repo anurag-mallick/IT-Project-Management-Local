@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
-import { Resend } from 'resend';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+import { sendTicketEmail } from '@/lib/email';
 
 export const GET = withAuth(async (req: NextRequest, _user: { email: string; id: number; name?: string; username: string; role: string }, { params }: { params: Promise<{ id: string }> }) => {
   try {
@@ -95,33 +93,49 @@ export const POST = withAuth(async (req: NextRequest, user: { email: string; id:
         select: { email: true, name: true, username: true }
       });
 
-      // 3. Send Emails via Resend
-      if (process.env.RESEND_API_KEY && resend && mentionedUsers.length > 0) {
-         try {
-             // Send an email to each mentioned user
-             const emailPromises = mentionedUsers.map(mentionedUser => {
-                 return resend.emails.send({
-                    from: 'Horizon IT <notifications@onboarding.resend.dev>', // Use a verified domain in production
-                    to: [mentionedUser.email],
-                    subject: `You were mentioned in Ticket #${ticketId}`,
-                    html: `
-                        <h2>You were mentioned by ${user.name || user.username}</h2>
-                        <p><strong>Ticket:</strong> ${comment.ticket?.title} (#${ticketId})</p>
-                        <hr />
-                        <p><strong>Comment:</strong></p>
-                        <p>${content}</p>
-                        <br />
-                        <p><a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/?ticketId=${ticketId}">View Ticket</a></p>
-                    `
-                 });
-             });
-             
-             await Promise.allSettled(emailPromises);
-         } catch (emailError) {
-             console.error("Failed to send mention emails:", emailError);
-             // Don't fail the comment creation if email fails
-         }
-      }
+    // 3. Send Emails
+    const notificationPromises = [];
+
+    // Notify ticket assignee about the new comment
+    const fullTicket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: { assignedTo: true }
+    });
+
+    if (fullTicket?.assignedTo?.username && fullTicket.assignedToId !== user.id) {
+      notificationPromises.push(
+        sendTicketEmail({
+          type: 'NEW_COMMENT',
+          ticket: fullTicket as any,
+          recipient: { email: fullTicket.assignedTo.username, name: fullTicket.assignedTo.name || 'Assignee' },
+          comment: content
+        })
+      );
+    }
+
+    // Notify mentioned users
+    if (mentionedUsers.length > 0) {
+      mentionedUsers.forEach(mentionedUser => {
+        if (mentionedUser.email && mentionedUser.email !== (fullTicket?.assignedTo?.username)) {
+           notificationPromises.push(
+             sendTicketEmail({
+               type: 'NEW_COMMENT',
+               ticket: fullTicket as any,
+               recipient: { email: mentionedUser.email, name: mentionedUser.name || 'User' },
+               comment: `You were mentioned: ${content}`
+             })
+           );
+        }
+      });
+    }
+
+    if (notificationPromises.length > 0) {
+      Promise.allSettled(notificationPromises).then(results => {
+        results.forEach((res, i) => {
+          if (res.status === 'rejected') console.error(`Notification ${i} failed:`, res.reason);
+        });
+      });
+    }
     }
 
     return NextResponse.json(comment, { status: 201 });

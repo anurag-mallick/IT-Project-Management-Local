@@ -29,8 +29,8 @@ async function getUsersHandler(req: NextRequest, user: any) {
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 }
-
 import bcrypt from 'bcryptjs';
+import { sendTicketEmail } from '@/lib/email';
 
 async function createUserHandler(req: NextRequest, user: any) {
   try {
@@ -58,10 +58,20 @@ async function createUserHandler(req: NextRequest, user: any) {
       }
     });
 
+    try {
+      await sendTicketEmail({
+        type: 'USER_CREATED',
+        recipient: { email: data.email, name: data.name || data.username || 'User' },
+        password: passwordToHash
+      });
+    } catch (mailErr) {
+      console.error("Failed to send welcome email:", mailErr);
+    }
+
     return NextResponse.json(newUser, { status: 201 });
-  } catch (error: any) {
+  } catch (error: Error | any) {
     console.error("Create User Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create user" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Failed to create user" }, { status: 500 });
   }
 }
 

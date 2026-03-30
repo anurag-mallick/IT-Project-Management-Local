@@ -71,15 +71,40 @@ check_deps() {
 
 check_deps
 
-# Choice of mode
-echo -e "\nChoose your installation method:"
-echo -e "  [1] Docker     — Recommended. Fully containerized."
-echo -e "  [2] Native     — No Docker needed. Uses PostgreSQL installed directly."
+# Step B: Interactive Configuration
+clear
+echo -e "${BLUE}============================================${NC}"
+echo -e "${BLUE}   HORIZON IT — Installation Wizard${NC}"
+echo -e "${BLUE}============================================${NC}"
+echo -e ""
 
-CHOICE=""
-while [[ ! "$CHOICE" =~ ^[12]$ ]]; do
-    read -p "Enter choice (1 or 2): " CHOICE
+# 1. Environment Selection
+echo -e "Choose your deployment environment:"
+echo -e "  [1] Local System — Optimized for personal desktop/laptop."
+echo -e "  [2] Virtual Machine / Server — Optimized for shared network access."
+ENV_CHOICE=""
+while [[ ! "$ENV_CHOICE" =~ ^[12]$ ]]; do
+    read -p "Enter choice (1 or 2): " ENV_CHOICE
 done
+
+# 2. Database Selection
+echo -e "\nChoose your database method:"
+echo -e "  [1] Docker — Recommended. Fully containerized."
+echo -e "  [2] Native — No Docker needed. Uses PostgreSQL installed directly."
+DB_CHOICE=""
+while [[ ! "$DB_CHOICE" =~ ^[12]$ ]]; do
+    read -p "Enter choice (1 or 2): " DB_CHOICE
+done
+
+# 3. Roundcube Integration
+echo -e "\nConfigure Roundcube Email Integration:"
+read -p "Enter Roundcube Email (e.g., support@domain.in): " EMAIL_ID
+read -p "Enter Email Password: " EMAIL_PW
+read -p "Enter IMAPS Port (default 993): " IMAP_PORT
+IMAP_PORT=${IMAP_PORT:-993}
+
+# Extract host from email
+MAIL_HOST="mail.$(echo $EMAIL_ID | sed 's/.*@//')"
 
 # Clone repository
 if [ ! -f "package.json" ]; then
@@ -118,6 +143,21 @@ POSTGRES_PASSWORD=$DB_PASSWORD
 JWT_SECRET=$JWT_SECRET
 NEXT_PUBLIC_APP_URL=http://${LOCAL_IP}:3000
 NODE_ENV=production
+
+# Email Configuration (SMTP - Outgoing)
+SMTP_HOST=$MAIL_HOST
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=$EMAIL_ID
+SMTP_PASS=$EMAIL_PW
+SMTP_FROM='IT Support <$EMAIL_ID>'
+
+# Email Configuration (IMAP - Incoming)
+IMAP_HOST=$MAIL_HOST
+IMAP_PORT=$IMAP_PORT
+IMAP_USER=$EMAIL_ID
+IMAP_PASS=$EMAIL_PW
+IMAP_TICKET_FOLDER=INBOX
 EOF
 
     echo -e "Building containers (3-5 mins)..."
@@ -202,6 +242,21 @@ DATABASE_URL=postgresql://horizon_user:$DB_PASSWORD@localhost:5432/horizon_it
 JWT_SECRET=$JWT_SECRET
 NEXT_PUBLIC_APP_URL=http://${LOCAL_IP}:3000
 NODE_ENV=production
+
+# Email Configuration (SMTP - Outgoing)
+SMTP_HOST=$MAIL_HOST
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=$EMAIL_ID
+SMTP_PASS=$EMAIL_PW
+SMTP_FROM='IT Support <$EMAIL_ID>'
+
+# Email Configuration (IMAP - Incoming)
+IMAP_HOST=$MAIL_HOST
+IMAP_PORT=$IMAP_PORT
+IMAP_USER=$EMAIL_ID
+IMAP_PASS=$EMAIL_PW
+IMAP_TICKET_FOLDER=INBOX
 EOF
 
     # 4. Install & Build
@@ -249,7 +304,7 @@ main().catch(err => { console.error(err); process.exit(1); });
     pm2 save
 }
 
-if [[ "$CHOICE" == "1" ]]; then
+if [[ "$DB_CHOICE" == "1" ]]; then
     install_docker
     MODE="Docker"
     STOP_CMD="docker-compose stop"
@@ -303,3 +358,5 @@ echo -e "\n  Stop app     : $STOP_CMD"
 echo -e "  Start app    : $START_CMD"
 echo -e "\n  Details saved to: $INFO_FILE"
 echo -e "${BLUE}============================================${NC}"
+echo -e ""
+read -p "Installation complete. Press Enter to continue and close..." 

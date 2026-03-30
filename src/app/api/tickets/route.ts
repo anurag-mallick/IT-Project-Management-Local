@@ -96,17 +96,38 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
 
     const autoUpdatedTicket = await runAutomations('ON_TICKET_CREATED', ticket);
 
+    // 3. Send Notifications
+    const notificationPromises = [];
+
+    // Notify Assignee
+    if (ticket.assignedTo?.username) {
+      notificationPromises.push(
+        sendTicketEmail({
+          type: 'ASSIGNED',
+          ticket: autoUpdatedTicket as any,
+          recipient: { email: ticket.assignedTo.username, name: ticket.assignedTo.name || 'Assignee' }
+        })
+      );
+    }
+
+    // Notify Admins for P0
     if (validatedPriority === TicketPriority.P0) {
       const adminUsers = await prisma.user.findMany({ where: { role: 'ADMIN' } });
       for (const admin of adminUsers) {
-        if (admin.username) {
-          await sendTicketEmail({
-            type: 'CREATED',
-            ticket: autoUpdatedTicket as any,
-            recipient: { email: admin.username, name: admin.name || 'Admin' }
-          });
+        if (admin.username && admin.username !== ticket.assignedTo?.username) {
+          notificationPromises.push(
+            sendTicketEmail({
+              type: 'CREATED',
+              ticket: autoUpdatedTicket as any,
+              recipient: { email: admin.username, name: admin.name || 'Admin' }
+            })
+          );
         }
       }
+    }
+
+    if (notificationPromises.length > 0) {
+      Promise.allSettled(notificationPromises);
     }
 
     return NextResponse.json(autoUpdatedTicket);

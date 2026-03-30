@@ -112,17 +112,16 @@ export const PATCH = withAuth(async (req: NextRequest, user: any, { params }: { 
 
     // Send assignment email if assignee changed
     if (data.assignedToId && data.assignedToId !== currentTicket.assignedToId) {
-      const assigneeUser = await prisma.user.findUnique({ where: { id: data.assignedToId } });
-      if (assigneeUser && assigneeUser.username) {
+      if (updatedTicket.assignedTo?.username) {
         await sendTicketEmail({
           type: 'ASSIGNED',
           ticket: autoUpdatedTicket as any,
-          recipient: { email: assigneeUser.username, name: assigneeUser.name || 'User' }
+          recipient: { email: updatedTicket.assignedTo.username, name: updatedTicket.assignedTo.name || 'User' }
         });
       }
     } else if (data.status && data.status !== currentTicket.status) {
        // Send status update email if no new assignment, but status changed
-       const userToNotify = currentTicket.assignedToId ? await prisma.user.findUnique({ where: { id: currentTicket.assignedToId } }) : null;
+       const userToNotify = updatedTicket.assignedTo;
        if (userToNotify && userToNotify.username) {
          await sendTicketEmail({
             type: data.status === 'RESOLVED' ? 'RESOLVED' : 'UPDATED',
