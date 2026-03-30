@@ -12,6 +12,7 @@ Horizon IT is designed to bridge the gap between complex enterprise IT tools and
 - **Dynamic Density System**: Switch between **Compact**, **Comfortable**, or **Spacious** UI modes to match your workflow.
 - **Intelligence Dashboard**: Real-time KPI tracking, volume trends, and priority distribution analytics.
 - **SLA Watch**: Dedicated surveillance of service level commitments with real-time countdowns and urgency grouping.
+- **Automated Email-to-Ticket Conversion**: Integrated IMAP polling logic to automatically generate and triage tickets from incoming support emails.
 - **Integrated UI Feedback**: Replaced intrusive `alert()` and `window.confirm()` calls with a custom **Toast** system and inline confirmation patterns for a seamless experience.
 - **Slide-over Ticket Details**: A non-disruptive, right-side panel for ticket management including AI-assisted triage and mention-based commenting.
 - **Virtualized List View**: High-performance ticket table powered by `@tanstack/react-virtual` for handling large datasets smoothly.
@@ -81,7 +82,8 @@ bash uninstall.sh
 - **Database**: PostgreSQL (Dockerized) via Prisma ORM
 - **State Management**: React Context (Density, Auth)
 - **Authentication**: Local JWT with HttpOnly cookie security
-- **Email**: Nodemailer integration for P0 notifications
+- **Outbound Email**: Nodemailer integration for notifications and alerts
+- **Inbound Email**: ImapFlow integration for automated ticket polling
 - **Storage**: Local filesystem mapping for attachments
 
 ---
