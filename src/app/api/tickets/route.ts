@@ -6,6 +6,7 @@ import { calculateSlaBreachTime } from '@/lib/sla';
 import { runAutomations } from '@/lib/automations';
 import { TicketStatus, TicketPriority } from '@/generated/prisma';
 import { sendTicketEmail } from '@/lib/email';
+import { broadcast } from '@/app/api/realtime/tickets/route';
 
 export const GET = withAuth(async (req: NextRequest, user: any) => {
   try {
@@ -129,6 +130,17 @@ export const POST = withAuth(async (req: NextRequest, user: any) => {
     if (notificationPromises.length > 0) {
       Promise.allSettled(notificationPromises);
     }
+
+    // Broadcast real-time update
+    broadcast('ticket-created', {
+      id: autoUpdatedTicket.id,
+      title: autoUpdatedTicket.title,
+      status: autoUpdatedTicket.status,
+      priority: autoUpdatedTicket.priority,
+      assignedToId: autoUpdatedTicket.assignedToId,
+      assignedTo: autoUpdatedTicket.assignedTo,
+      updatedAt: autoUpdatedTicket.updatedAt
+    });
 
     return NextResponse.json(autoUpdatedTicket);
   } catch (err: any) {

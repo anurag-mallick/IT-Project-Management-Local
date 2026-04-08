@@ -1,25 +1,113 @@
 import nodemailer from 'nodemailer';
-import { Ticket } from '@/types';
+import { Ticket, Communication } from '@/types';
+import { prisma } from './prisma';
 
-let transporter: nodemailer.Transporter | null = null;
+let transporters: Map<number, nodemailer.Transporter> = new Map();
 
-function getTransporter() {
-  if (transporter) return transporter;
+interface EmailAccountConfig {
+  id: number;
+  smtpHost: string | null;
+  smtpPort: number;
+  smtpSSL: boolean;
+  smtpTls: boolean;
+  username: string;
+  password: string;
+}
 
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+async function getTransporter(accountId?: number) {
+  if (accountId && transporters.has(accountId)) {
+    return transporters.get(accountId)!;
+  }
+
+  let config: EmailAccountConfig | null = null;
+  
+  if (accountId) {
+    config = await prisma.emailAccount.findUnique({
+      where: { id: accountId },
+      select: {
+        id: true,
+        smtpHost: true,
+        smtpPort: true,
+        smtpSSL: true,
+        smtpTls: true,
+        username: true,
+        password: true
+      }
+    }) as EmailAccountConfig | null;
+  }
+
+  const host = config?.smtpHost || process.env.SMTP_HOST;
+  const port = config?.smtpPort || parseInt(process.env.SMTP_PORT || '587');
+  const secure = config?.smtpSSL ?? (process.env.SMTP_SECURE === 'true');
+  const user = config?.username || process.env.SMTP_USER;
+  const pass = config?.password || process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) {
+    throw new Error('SMTP configuration missing');
+  }
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user,
+      pass,
     },
     tls: {
       rejectUnauthorized: false
     }
   });
 
+  if (accountId) {
+    transporters.set(accountId, transporter);
+  }
+
   return transporter;
+}
+
+export async function getDefaultEmailAccount() {
+  return prisma.emailAccount.findFirst({
+    where: { isActive: true, isDefault: true }
+  });
+}
+
+export async function sendEmailFromAccount(
+  accountId: number,
+  options: {
+    to: string;
+    cc?: string;
+    bcc?: string;
+    subject: string;
+    html: string;
+    inReplyTo?: string;
+    references?: string;
+    attachments?: Array<{ filename: string; content: Buffer; contentType: string }>;
+  }
+) {
+  const account = await prisma.emailAccount.findUnique({
+    where: { id: accountId }
+  });
+
+  if (!account) {
+    throw new Error('Email account not found');
+  }
+
+  const transporter = await getTransporter(accountId);
+  
+  const info = await transporter.sendMail({
+    from: `"${account.emailAccountName}" <${account.email}>`,
+    to: options.to,
+    cc: options.cc,
+    bcc: options.bcc,
+    subject: options.subject,
+    html: options.html,
+    inReplyTo: options.inReplyTo,
+    references: options.references,
+    attachments: options.attachments
+  });
+
+  return info;
 }
 
 function getBaseTemplate(title: string, content: string, actionUrl?: string, actionLabel?: string) {
@@ -68,12 +156,18 @@ export async function sendTicketEmail({
   recipient,
   password,
   comment,
+  emailAccountId,
+  inReplyTo,
+  references,
 }: {
-  type: 'CREATED' | 'UPDATED' | 'ASSIGNED' | 'RESOLVED' | 'USER_CREATED' | 'NEW_COMMENT' | 'SLA_WARNING';
+  type: 'CREATED' | 'UPDATED' | 'ASSIGNED' | 'RESOLVED' | 'USER_CREATED' | 'NEW_COMMENT' | 'SLA_WARNING' | 'REPLY';
   ticket?: Ticket;
   recipient: { email: string; name: string };
   password?: string;
   comment?: string;
+  emailAccountId?: number;
+  inReplyTo?: string;
+  references?: string;
 }) {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
     console.warn('SMTP settings not configured. Skipping email notification.');
@@ -184,17 +278,49 @@ export async function sendTicketEmail({
         'Resolve Now'
       );
       break;
+
+    case 'REPLY':
+      if (!ticket) return;
+      subject = `Re: [Ticket #${ticket.id}] ${ticket.title}`;
+      html = getBaseTemplate(
+        'New Reply',
+        `<p>Hello ${recipient.name},</p>
+         <p>You have a new reply on your ticket:</p>
+         <div class="meta-box">
+           <div class="meta-item"><span class="meta-label">Ticket:</span> #${ticket.id}</div>
+           <div class="meta-item"><span class="meta-label">Status:</span> ${ticket.status}</div>
+         </div>
+         ${comment ? `<div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px;">
+           <p style="margin: 0;">${comment}</p>
+         </div>` : ''}`,
+        ticketUrl,
+        'View Reply'
+      );
+      break;
   }
 
   try {
-    const info = await getTransporter().sendMail({
-      from: process.env.SMTP_FROM || '"IT Support" <support@yourdomain.com>',
-      to: recipient.email,
-      subject,
-      html,
-    });
+    let info: nodemailer.SentMessageInfo;
+    
+    if (emailAccountId) {
+      info = await sendEmailFromAccount(emailAccountId, {
+        to: recipient.email,
+        subject,
+        html,
+        inReplyTo,
+        references
+      });
+    } else {
+      info = await getTransporter().sendMail({
+        from: process.env.SMTP_FROM || '"IT Support" <support@yourdomain.com>',
+        to: recipient.email,
+        subject,
+        html,
+      });
+    }
 
     console.log('Email sent successfully:', info.messageId);
+    return info;
   } catch (err) {
     console.error('Error sending email via SMTP:', err);
     throw err;

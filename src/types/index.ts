@@ -75,6 +75,7 @@ export interface Ticket {
   status: TicketStatus;
   priority: Priority;
   requesterName: string | null;
+  requesterEmail?: string | null;
   assignedToId?: number | null;
   assignedTo?: {
     id: number;
@@ -92,8 +93,126 @@ export interface Ticket {
   updatedAt: string | Date;
   dueDate?: string | Date | null;
   slaBreachAt?: string | Date | null;
+  responseBy?: string | Date | null;
+  resolutionBy?: string | Date | null;
+  firstResponseAt?: string | Date | null;
+  teamId?: number | null;
+  team?: Team | null;
+  customerId?: number | null;
+  customer?: Customer | null;
+  emailAccountId?: number | null;
+  viaCustomerPortal?: boolean;
+  ticketType?: string;
+  resolution?: string;
+  feedbackRating?: number;
+  feedbackComment?: string;
   _count?: {
     comments: number;
     checklists: number;
+    communications?: number;
   };
+  communications?: Communication[];
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  roundRobin: boolean;
+  agents?: User[];
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface Customer {
+  id: number;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  company: string | null;
+  isBlocked: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export type EmailProvider = 'GMAIL' | 'OUTLOOK' | 'YAHOO' | 'YANDEX' | 'SENDGRID' | 'CUSTOM';
+
+export interface EmailAccount {
+  id: number;
+  email: string;
+  emailAccountName: string;
+  provider: EmailProvider;
+  imapHost: string | null;
+  imapPort: number;
+  imapSSL: boolean;
+  smtpHost: string | null;
+  smtpPort: number;
+  smtpSSL: boolean;
+  smtpTls: boolean;
+  isActive: boolean;
+  isDefault: boolean;
+  syncType: string;
+  initialSyncCount: number;
+  lastSyncAt: string | Date | null;
+  autoResponse: boolean;
+  enableInboxing: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface Communication {
+  id: number;
+  uid: string | null;
+  messageId: string | null;
+  inReplyTo: string | null;
+  references: string | null;
+  subject: string;
+  content: string;
+  htmlContent: string | null;
+  sender: string;
+  senderName: string | null;
+  recipient: string;
+  cc: string | null;
+  bcc: string | null;
+  emailAccountId: number | null;
+  ticketId: number | null;
+  customerId: number | null;
+  direction: 'INBOUND' | 'OUTBOUND';
+  isAutoReply: boolean;
+  isRead: boolean;
+  createdAt: string | Date;
+  attachments?: EmailAttachment[];
+}
+
+export interface EmailAttachment {
+  id: number;
+  fileName: string;
+  contentType: string;
+  size: number;
+  cid: string | null;
+  communicationId: number;
+  createdAt: string | Date;
+}
+
+export interface SavedReply {
+  id: number;
+  title: string;
+  content: string;
+  isPublic: boolean;
+  teamId: number | null;
+  createdById: number | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface EmailTemplate {
+  id: number;
+  name: string;
+  subject: string;
+  content: string;
+  type: string;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }

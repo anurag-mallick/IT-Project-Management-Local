@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ChevronRight, Loader2, AlertCircle, Trash2, X } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Ticket, User } from '@/types';
 import TicketDetailModal from '@/components/TicketDetailModal';
 import { useDensity } from '@/context/DensityContext';
+import { useRealtimeTickets } from '@/hooks/useRealtimeTickets';
 
 const priorityColor: Record<string, string> = {
   P0: 'text-red-400',
@@ -69,9 +70,40 @@ const ListBoard = ({ searchQuery = "", users, assets }: ListBoardProps) => {
     }
   };
 
+  // Handle real-time ticket updates
+  const handleTicketUpdate = useCallback((event: { type: 'created' | 'updated' | 'deleted'; ticket: any }) => {
+    const { type, ticket } = event;
+    
+    setTickets((prev) => {
+      switch (type) {
+        case 'created':
+          // Add new ticket if it doesn't exist
+          if (!prev.find(t => t.id === ticket.id)) {
+            return [ticket, ...prev];
+          }
+          return prev;
+        
+        case 'updated':
+          // Update existing ticket
+          return prev.map(t => t.id === ticket.id ? { ...t, ...ticket } : t);
+        
+        case 'deleted':
+          // Remove deleted ticket
+          return prev.filter(t => t.id !== ticket.id);
+        
+        default:
+          return prev;
+      }
+    });
+  }, []);
+
+  // Subscribe to real-time updates
+  useRealtimeTickets(handleTicketUpdate);
+
   useEffect(() => { 
     fetchTickets(currentPageRef.current); 
-    const interval = setInterval(() => fetchTickets(currentPageRef.current), 15000);
+    // Reduced polling interval since we have real-time updates
+    const interval = setInterval(() => fetchTickets(currentPageRef.current), 30000);
     return () => clearInterval(interval);
   }, []);
 

@@ -46,6 +46,8 @@ model User {
   activityLogs ActivityLog[]
   savedViews   SavedView[] @relation("UserSavedViews")
   assets       Asset[]
+  teams        Team[]        @relation("TeamAgents")
+  savedReplies SavedReply[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -57,13 +59,19 @@ model Ticket {
   status        TicketStatus @default(TODO)
   priority      TicketPriority @default(P2)
   requesterName String?
+  requesterEmail String?
   assignedTo    User?        @relation("AssignedTickets", fields: [assignedToId], references: [id])
   assignedToId  Int?
   slaBreachAt   DateTime?
+  responseBy    DateTime?    // First response SLA
+  resolutionBy  DateTime?    // Resolution SLA
+  firstResponseAt DateTime? // When agent first responded
   dueDate       DateTime?
   timeSpent     Int          @default(0)
   folder        Folder?      @relation(fields: [folderId], references: [id])
   folderId      Int?
+  team          Team?        @relation(fields: [teamId], references: [id])
+  teamId        Int?
   asset         Asset?       @relation(fields: [assetId], references: [id])
   assetId       Int?
   tags          String[]
@@ -72,13 +80,26 @@ model Ticket {
   comments      Comment[]
   attachments   Attachment[]
   activityLogs  ActivityLog[]
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  customerId    Int?
+  emailAccount  EmailAccount? @relation(fields: [emailAccountId], references: [id])
+  emailAccountId Int?
+  viaCustomerPortal Boolean  @default(false)
+  ticketType    String?      // INCIDENT, REQUEST, QUESTION, PROBLEM
+  resolution    String?      // Resolution description
+  feedbackRating Int?        // 1-5 rating
+  feedbackComment String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+
+  communications Communication[]
 
   @@index([status])
   @@index([assignedToId])
   @@index([priority])
   @@index([createdAt])
+  @@index([customerId])
+  @@index([teamId])
 }
 
 model Comment {
@@ -229,4 +250,135 @@ model Asset {
   tickets      Ticket[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+enum EmailProvider {
+  GMAIL
+  OUTLOOK
+  YAHOO
+  YANDEX
+  SENDGRID
+  CUSTOM
+}
+
+model EmailAccount {
+  id              Int          @id @default(autoincrement())
+  email           String       @unique
+  emailAccountName String
+  provider        EmailProvider @default(CUSTOM)
+  imapHost        String?
+  imapPort        Int          @default(993)
+  imapSSL         Boolean      @default(true)
+  smtpHost        String?
+  smtpPort        Int          @default(587)
+  smtpSSL         Boolean      @default(true)
+  smtpTls         Boolean      @default(true)
+  username        String
+  password        String       // Encrypted
+  appendTo        String?      @default("INBOX") // Folder to append processed emails
+  isActive        Boolean      @default(true)
+  isDefault       Boolean      @default(false)
+  syncType        String       @default("UNSEEN") // UNSEEN, ALL
+  initialSyncCount Int         @default(100)
+  lastSyncAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  communications  Communication[]
+  tickets         Ticket[]
+  autoResponse    Boolean       @default(true)
+  enableInboxing  Boolean       @default(true)
+}
+
+model Customer {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  name         String?
+  phone        String?
+  company      String?
+  isBlocked    Boolean  @default(false)
+  tickets      Ticket[]
+  communications Communication[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Team {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  roundRobin  Boolean   @default(false)
+  agents      User[]    @relation("TeamAgents")
+  tickets     Ticket[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model SavedReply {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String   // HTML or plain text
+  isPublic  Boolean  @default(false)
+  team      Team?    @relation(fields: [teamId], references: [id])
+  teamId    Int?
+  createdBy User?    @relation(fields: [createdById], references: [id])
+  createdById Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  subject   String
+  content   String   // HTML with Jinja2 variables
+  type      String   @default("CUSTOM") // ACKNOWLEDGEMENT, REPLY, FEEDBACK, CUSTOM
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Communication {
+  id              Int          @id @default(autoincrement())
+  uid             String?      // IMAP UID
+  messageId       String?      // Email Message-ID for threading
+  inReplyTo       String?      // References the parent email
+  references      String?      // Full references header
+  subject         String
+  content         String
+  htmlContent     String?
+  sender          String       // From address
+  senderName      String?
+  recipient       String       // To address
+  cc              String?
+  bcc             String?
+  emailAccount    EmailAccount? @relation(fields: [emailAccountId], references: [id])
+  emailAccountId  Int?
+  ticket          Ticket?      @relation(fields: [ticketId], references: [id])
+  ticketId        Int?
+  customer        Customer?    @relation(fields: [customerId], references: [id])
+  customerId      Int?
+  direction       String       @default("INBOUND") // INBOUND, OUTBOUND
+  isAutoReply     Boolean      @default(false)
+  isRead          Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+
+  attachments     EmailAttachment[]
+
+  @@index([messageId])
+  @@index([ticketId])
+  @@index([emailAccountId])
+}
+
+model EmailAttachment {
+  id             Int           @id @default(autoincrement())
+  fileName       String
+  contentType    String
+  content        Bytes
+  size           Int
+  cid            String?       // Content-ID for inline images
+  communication  Communication @relation(fields: [communicationId], references: [id])
+  communicationId Int
+  createdAt      DateTime      @default(now())
 }

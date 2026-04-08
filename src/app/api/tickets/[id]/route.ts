@@ -4,6 +4,7 @@ import { withAuth } from '@/lib/auth';
 import { calculateSlaBreachTime } from '@/lib/sla';
 import { runAutomations } from '@/lib/automations';
 import { sendTicketEmail } from '@/lib/email';
+import { broadcast } from '@/app/api/realtime/tickets/route';
 
 export const PATCH = withAuth(async (req: NextRequest, user: any, { params }: { params: Promise<{ id: string }> }) => {
   try {
@@ -131,6 +132,17 @@ export const PATCH = withAuth(async (req: NextRequest, user: any, { params }: { 
        }
     }
 
+    // Broadcast real-time update
+    broadcast('ticket-updated', {
+      id: autoUpdatedTicket.id,
+      title: autoUpdatedTicket.title,
+      status: autoUpdatedTicket.status,
+      priority: autoUpdatedTicket.priority,
+      assignedToId: autoUpdatedTicket.assignedToId,
+      assignedTo: autoUpdatedTicket.assignedTo,
+      updatedAt: autoUpdatedTicket.updatedAt
+    });
+
     return NextResponse.json(autoUpdatedTicket);
   } catch (err) {
     return NextResponse.json({ error: 'Failed to update ticket' }, { status: 400 });
@@ -152,6 +164,11 @@ export const DELETE = withAuth(async (req: NextRequest, user: any, { params }: {
 
     await prisma.ticket.delete({
       where: { id: parseInt(id) }
+    });
+
+    // Broadcast real-time update
+    broadcast('ticket-deleted', {
+      id: parseInt(id)
     });
 
     return NextResponse.json({ success: true });

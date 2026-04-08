@@ -1,10 +1,11 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import TaskCard from "./TaskCard";
 import TicketDetailModal from "@/components/TicketDetailModal";
 import { Ticket, TicketStatus, User } from "@/types";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Loader2 } from "lucide-react";
+import { useRealtimeTickets } from "@/hooks/useRealtimeTickets";
 
 interface KanbanProps {
   searchQuery?: string;
@@ -62,13 +63,44 @@ const KanbanBoard = ({ searchQuery = "", users, assets }: KanbanProps) => {
     }
   };
 
+  // Handle real-time ticket updates
+  const handleTicketUpdate = useCallback((event: { type: 'created' | 'updated' | 'deleted'; ticket: any }) => {
+    const { type, ticket } = event;
+    
+    setTickets((prev) => {
+      switch (type) {
+        case 'created':
+          // Add new ticket if it doesn't exist
+          if (!prev.find(t => t.id === ticket.id)) {
+            return [...prev, ticket];
+          }
+          return prev;
+        
+        case 'updated':
+          // Update existing ticket
+          return prev.map(t => t.id === ticket.id ? { ...t, ...ticket } : t);
+        
+        case 'deleted':
+          // Remove deleted ticket
+          return prev.filter(t => t.id !== ticket.id);
+        
+        default:
+          return prev;
+      }
+    });
+  }, []);
+
+  // Subscribe to real-time updates
+  useRealtimeTickets(handleTicketUpdate);
+
   useEffect(() => {
     fetchTickets();
     fetchColumns();
 
+    // Reduced polling interval since we have real-time updates
     const interval = setInterval(() => {
       fetchTickets();
-    }, 10000);
+    }, 30000); // Fallback polling every 30 seconds
 
     return () => clearInterval(interval);
   }, []);
