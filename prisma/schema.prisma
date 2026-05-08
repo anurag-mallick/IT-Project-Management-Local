@@ -382,3 +382,26 @@ model EmailAttachment {
   communicationId Int
   createdAt      DateTime      @default(now())
 }
+
+model KnowledgeBaseArticle {
+  id          Int      @id @default(autoincrement())
+  title       String
+  slug        String   @unique
+  content     String   // HTML or Markdown content
+  category    String   @default("General")
+  tags        String[]
+  isPublished Boolean  @default(false)
+  viewCount   Int      @default(0)
+  team        Team?    @relation(fields: [teamId], references: [id])
+  teamId      Int?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([title])
+  @@index([category])
+  @@index([isPublished])
+  @@index([teamId])
+  @@index([createdById])
+}

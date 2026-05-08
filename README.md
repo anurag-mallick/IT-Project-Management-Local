@@ -26,6 +26,14 @@ Horizon IT is designed to bridge the gap between complex enterprise IT tools and
 - **Automated Email-to-Ticket Conversion:** Integrated IMAP polling logic to automatically create tickets from incoming support emails.
 - **Self-Hosted SMTP/IMAP:** Complete control over your data with direct integration into your private email infrastructure.
 
+### 📚 Knowledge Base System
+- **Article Management:** Create, edit, and organize knowledge base articles with categories and tags.
+- **Public & Private Articles:** Control article visibility with publish/unpublish functionality.
+- **Advanced Search:** Full-text search across titles, content, and tags with caching for performance.
+- **Team-Based Knowledge:** Assign articles to specific teams for targeted knowledge sharing.
+- **Public Access:** Customer-facing knowledge base API for self-service support.
+- **Analytics:** Track article views and usage statistics.
+
 ## Installation
 
 ### Windows (VM or Desktop)
@@ -79,9 +87,21 @@ bash uninstall.sh
 | **Run Seed** | `node scripts/seed-pg.js` |
 | **Sync DB Client** | `npx prisma generate` |
 
+## 📚 Knowledge Base API Endpoints
+
+| Endpoint | Method | Description | Authentication |
+| :--- | :--- | :--- | :--- |
+| `/api/knowledge-base` | GET | List all knowledge base articles | Required |
+| `/api/knowledge-base` | POST | Create new knowledge base article | Required |
+| `/api/knowledge-base/search` | GET | Search knowledge base with query | Required |
+| `/api/knowledge-base/:id` | GET | Get single knowledge base article | Required |
+| `/api/knowledge-base/:id` | PUT | Update knowledge base article | Required |
+| `/api/knowledge-base/:id` | DELETE | Delete knowledge base article | Required |
+| `/api/public/knowledge-base` | GET | Public knowledge base search | None |
+
 ---
 
-## 📦 Architecture
+## � Architecture
 
 - **Frontend**: Next.js 15, Tailwind CSS, Framer Motion
 - **Logic**: TypeScript, Lucide Icons, Date-fns
